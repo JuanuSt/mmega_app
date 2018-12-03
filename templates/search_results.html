@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block search_results %}
+
+<div class="global_bar_box" style="padding: 0px;">
+    {% if accounts == '0' %}
+        <div style="padding: 0px 16px; padding-top: 8px;">
+            <div>Results for 
+                <strong>{{ query }}</strong> in 
+                <strong>all accounts</strong> for
+                <strong>{{ search_type }}</strong>
+            </div>
+        </div>
+    {% else %}
+        {% set accounts_search = Config.query.filter_by(id=accounts).first() %}
+        <div style="padding: 0px 16px; padding-top: 8px;">  
+            <div>Results for 
+                <strong>{{ query }}</strong> in account
+                <strong>{{ accounts_search.name }}</strong> for
+                <strong>{{ search_type }}</strong>
+            </div>
+        </div>
+    {% endif %}
+    
+    <a href='/search_results_details/{{ query }}/{{ accounts }}/{{ search_type }}' 
+       style="text-decoration: none; padding-left: 8px;">
+        <input class="custom_button" type='button' value='Details'>
+    </a>
+</div>
+
+<div class="form_box" style="max-width: 100%;">
+    <table style="padding: 8px;" cellspacing="10px">
+        {% for file in results %}
+            <tr>
+                <td style="word-break: break-all; valign="top"> 
+                    <a href="{{ file.link | safe }}" style="text-decoration: none; color: white;">
+                        {{ file.filename | safe }}
+                    </a>
+                </td>
+            </tr>
+        {% endfor %}
+    </table>
+</div>
+
+{% endblock %} 

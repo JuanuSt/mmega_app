@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block files %}
+
+<!-- Tool bar -->
+<div class="global_bar_box" style="padding: 0px;">
+    <div style="padding: 1px 8px;" > 
+	    <input class="custom_button" type='submit' value='Details' onClick=" files_details('{{ config.id }}')"/>
+    </div>
+    <div style="margin-top: 8px; margin-left: auto;">{{ config.name }}</div>
+    <div style="padding: 0px 16px; padding-top: 10px; margin-left: auto;">
+        {{ disk_stats.used }} / {{ disk_stats.total }}
+    </div>
+</div>
+
+<div class="form_box" style="max-width: 100%;">
+    <table style="padding: 8px;" cellspacing="10px">
+        <tr>
+            <th style="text-align: left; width: 75%;">remote files ({{ file_stats.remote }})</th>
+        </tr>
+
+        {% for remote_file in remote_files %}
+            <tr>
+                <td style="word-break: break-all;" valign="top"> 
+	                <a href="{{ remote_file.link | safe}}" style="text-decoration: none; color: white;">
+	                    {{ remote_file.filename | safe}}
+	                </a>
+                </td>
+            </tr>
+        {% endfor %}
+    </table>
+</div>
+
+{% if local_files %}
+<div class="form_box" style="max-width: 100%;">
+    <table style="padding: 8px;" cellspacing="10px">
+        <tr>
+            <th style="text-align: left; width: 75%;">local files ({{ file_stats.local }})</th>
+        </tr>
+
+        {% for local_file in local_files %}
+            <tr>
+            	{% if config.local_links %}
+	                <td style="word-break: break-all;" valign="top"> 
+	                    <a href="file://///{{ local_file.path | safe }}" style="text-decoration: none; color: white;">
+	                        {{ local_file.filename | safe }}
+	                    </a>
+	                </td>
+                {% else %}
+	                <td style="word-break: break-all;" valign="top"> 
+	                    <a href="{{ local_file.path | safe }}" style="text-decoration: none; color: white;">
+	                        {{ local_file.filename | safe }}
+	                    </a>
+	                </td>
+                {% endif %}
+            </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endif %}
+
+{% endblock %}

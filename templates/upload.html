@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block upload %}
+
+<!-- upload file form -->
+<form method=post enctype=multipart/form-data>
+    <!-- form secret key -->
+    {{ upload_file_form.hidden_tag() }}
+    
+    <div class="form_box" style="max-width: 500px;">
+       <div style="margin-left: 4px; margin-top: 4px">
+	        <p>{{ upload_file_form.remote_dir_dst.label }}<br>{{ upload_file_form.remote_dir_dst(size=20) }}</p>
+	        <p style="max-width: 480px; text-overflow: ellipsis; overflow: hidden;">{{ upload_file_form.file }}</p>
+	    </div>
+	    <div class="form_box_sub" style="margin-top: auto;">
+	       <input class="custom_button" type='submit' value='Upload'>
+	    </div>
+    </div>
+</form>
+
+{% endblock %} 

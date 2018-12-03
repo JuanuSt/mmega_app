@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+
+{% block account %}
+
+<!-- Glogal Stats bar -->
+<div class="global_stats_box">
+	 
+    <div>updated {{ total_accounts_updated }}/{{ acc_total }} </div>
+    <!--
+    <div style="margin-right: auto; margin-left: 2%">synced {{ acc_synced }}/{{ acc_total }} </div> 
+    -->
+    <div></div>
+    <div>{{ space_total_used }} / {{ space_total }} </div>
+</div>
+
+
+{% for acc in accounts %}
+    {% set account_config = Config.query.filter_by(id=acc.id).first() %}
+    {% set account_disk = DiskStats.query.filter_by(config_id=acc.id).first() %}
+    {% set account_file_stats = FileStats.query.filter_by(config_id=acc.id).first() %}
+    {% set account_state = StateHash.query.filter_by(config_id=acc.id).all() %}
+
+        <!-- Acount base -->
+        <div class="account_box" id="account_box_{{ account_config.id }}">
+            <div class="name_box" id="name_box_{{ account_config.id }}">
+                <a style='cursor: pointer; float: left; width: 90%' onClick=" toggle_visibility('data_box_{{ account_config.id }}')"><strong> {{ account_config.name }} </strong></a>
+                <a style='cursor: pointer; float: right; width: 5%' onClick=" toggle_visibility('data_box_{{ account_config.id }}')">&#x25BE;</a>
+                <div style="clear: both"></div>
+            </div>
+            <div class="data_box" id="data_box_{{ account_config.id }}" style="display: none;">
+                <div class="config_box" >
+                    <div style="margin-bottom: 2px; cursor: pointer;" id="config_box_{{ account_config.id }}" onClick=" show_config('{{ account_config.id }}')"><strong>Configuration</strong></div>
+                    <div class="column">email</div>
+                    <div class="column2"> {{ account_config.email }} </div>
+                    
+                    {% if account_config.local_dir %}
+	                    <div class="column">local dir</div>
+	                    <div class="column2"> {{ account_config.local_dir }} </div>
+                    {% endif %}
+                    
+                    <div class="column">remote dir</div>
+                    <div class="column2"> {{ account_config.remote_dir }} </div>
+                    
+                    {% if not account_config.local_dir %}
+                        <div class="column"><br></div>
+                        <div class="column2"><br></div>
+                    {% endif %}
+                    
+                </div>
+                <div class="diskfile_box" id="diskfile_box_{{ account_config.id }}">
+                    <div class="boxes_skin" id="disk_box_{{ account_config.id }}">
+                        <div style="margin-bottom: 2px"><strong>Disk</strong></div>
+                        <div class="field">
+                           <div>free</div>
+                           {% if account_disk.free_bytes < 1073741824 %}
+                               {% set free_color = '#b02222' %}
+                           {% elif account_disk.free_bytes < 26843545600 %}
+                               {% set free_color = '#ea9641' %}
+                           {% else %}
+                               {% set free_color = '#4ec932' %}
+                           {% endif %}
+                           <div style="color: {{ free_color }};"> {{ account_disk.free }} </div>
+                        </div>
+                        <div class="field">
+                           <div>used</div>
+                           <div> {{ account_disk.used }} </div>
+                        </div>
+                        <div class="field">
+                           <div>total</div>
+                           <div> {{ account_disk.total }} </div>
+                        </div>
+                    </div>
+                    <div class="boxes_skin" id="files_box_{{ account_config.id }}" style='cursor: pointer;' onClick=" show_files('{{ account_config.id }}')">
+                        <div style="margin-bottom: 2px"><strong>Files</strong></div>
+                        
+                        {% if account_file_stats.remote %}
+                            <div class="field">
+                               <div>remote</div>
+                               <div> {{ account_file_stats.remote }} </div>
+                            </div>
+                        {% else %}
+                            <div class="field">
+                               <div></div>
+                               <div> </div>
+                            </div>
+                        {% endif %}
+                        
+                        {% if account_file_stats.local %}
+	                        <div class="field">
+	                           <div>local</div>
+	                           <div> {{ account_file_stats.local }} </div>
+	                        </div>
+	                    {% else %}
+	                        <div class="field">
+                               <div></div>
+                               <div> </div>
+                            </div>
+                        {% endif %}
+	                    
+	                    {% if account_file_stats.synced %}
+	                        <div class="field">
+	                           <div>synced</div>
+	                           <div> {{ account_file_stats.synced }} </div>
+	                        </div>
+	                    {% else %}
+                            <div class="field">
+                               <div></div>
+                               <div> </div>
+                            </div>
+	                    {% endif %}   
+                    </div>
+                </div>
+                <div class="button_box" id="button_box_{{ account_config.id }}">
+                    <div>
+                        <button class="custom_button" id="button_update_{{ account_config.id }}"
+                                style='cursor: pointer;' onClick=" update_full('{{ account_config.id }}')">
+                                Update &#160;
+                                {% if account_state[1] %}
+	                                {% if account_state[0].is_update and account_state[1].is_update %}
+	                                    &#10003;
+	                                {% else %}
+	                                    &#10007;
+	                                {% endif %}
+	                            {% elif account_state[0].is_update %}
+	                            	&#10003;
+	                            {% else %}
+	                            	&#10007;
+	                            {% endif %}
+                         </button>
+                    </div>
+                    <div class="button_box_sub">
+                        <button class="custom_button" id="button_upload_{{ account_config.id }}"
+                                style='cursor: pointer;' onClick=" upload('{{ account_config.id }}')">
+                        	Upload
+                        </button>
+                        {% if account_config.local_dir and os.access(account_config.local_dir, os.R_OK) %}
+                            <button class="custom_button" id="button_sync_{{ account_config.id }}"
+                                    style='cursor: pointer;' onClick=" sync('{{ account_config.id }}')">
+                            	Sync
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+{% endfor %}
+
+{% endblock %}

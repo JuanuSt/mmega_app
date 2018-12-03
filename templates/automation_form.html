@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block automation %}
+
+<form action="" method="post">
+	<div class="form_box">
+        {{ form.hidden_tag() }}
+		
+		<p>{{ form.cron_options.label }}:</p>{{ form.cron_options}}
+
+		<div style=" margin-left:40px;">
+		<p>
+			<!-- 
+			<input type="datetime-local" name="cron_time" min="00:00" max="23:59"> </p>
+			 
+			<div style="max-width: 100px;" id='time'>
+			    <input style="max-width: 30px;" name="hour" type="number" min="0" max="23" placeholder="03" required>
+			    <input style="max-width: 30px;" name="minute" type="number" min="0" max="59" placeholder="00" required>
+			</div>
+			-->
+  		</div>
+		<!-- 
+		<div>
+			{% for subfield in form.cron_options %}
+			   <p>{{ subfield.name }} {{ subfield }} {{ subfield.label }}</p>
+			{% endfor %}
+  		</div>
+  		 -->
+		<div class="form_box_sub" style="margin-top: auto;">
+		    <input class="custom_button" type='submit' value='Set'>
+		</div>
+	</div>
+</form>
+
+<div class="form_box" style="padding: 16px;">
+    Already installed job for {{ current_user.user_name }}:
+    {% for item in inst_job %}
+    	<p style="font-size:12px;"> {{ item }}</p>
+    {% endfor %}
+</div>
+
+<!--
+<div class="form_box" style="padding: 16px;">
+    <div style="font-size: 10px;">
+        Why automate? According to the terms of 
+        <a href="https://mega.nz/terms" style="color: white;">mega.nz</a>:<br>
+        <br>
+        <div style="padding: 0px 24px;">
+	       We can immediately suspend or terminate your access to the
+	       website and our services without notice to you:<br>
+	       <br>
+	       31.3 if you are using a free account and that account has been inactive
+	       for over 3 months or we have been unable to contact you using
+	       the email address in your account details.
+       </div>
+   </div>
+</div>
+  -->
+{% endblock %}

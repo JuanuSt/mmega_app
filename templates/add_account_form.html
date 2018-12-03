@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block add_account %}
+
+<!-- add account form -->
+<form action="" method="post">
+    <!-- form secret key -->
+    {{ account_form.hidden_tag() }}
+
+    <div class="form_box" style="max-width: 500px;">
+        <div>
+            <p>{{ account_form.name.label }}<br>{{ account_form.name(size=20) }}</p>
+            <p> <!-- set directories -->
+                <a style='cursor: pointer; float: left;' onClick=" toggle_visibility('set_directories')">set directories &#x25BE;</a>
+            </p>
+            <!-- directories (conditional view) -->
+            <div id="set_directories" style="display: none; clear: both; flex-wrap: wrap; flex-direction: column; justify-content: space-between flex-start;"">
+                <p style="margin-bottom: 0px;">{{ account_form.local_dir.label }}<br>{{ account_form.local_dir(size=20) }}</p>
+                <p style="margin-bottom: 0px; margin-top: 0px; font-size: 14px;">{{ account_form.local_links }} {{ account_form.local_links.label }}</p>
+                <p>{{ account_form.remote_dir.label }}<br>{{ account_form.remote_dir(size=20) }}</p>
+            </div>
+        </div>
+        <div class="form_box_sub">
+            <p>{{ account_form.email.label }}<br>{{ account_form.email(size=20) }}</p>
+            <p>{{ account_form.passwd.label }}<br>{{ account_form.passwd(size=20) }}</p>
+        </div>
+        <div class="form_box_sub">
+            <input class="custom_button" type='submit' value='Add' style="float: right;">
+        </div>
+    </div>
+
+</form>
+
+<!-- Upload file form -->
+<form method=post enctype=multipart/form-data>
+    <!-- form secret key -->
+    {{ upload_form.hidden_tag() }}
+    
+    <div class="form_box" style="max-width: 500px;">
+       <div style="margin-left: 4px; margin-top: 4px; max-width: 480px; text-overflow: ellipsis; overflow: hidden;">
+	        {{ upload_form.file }}
+	    </div>
+	    <div class="form_box_sub">
+	       <input class="custom_button" type='submit' value='Upload'>
+	    </div>
+    </div>
+</form>
+
+{% endblock %} 

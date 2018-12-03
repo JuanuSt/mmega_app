@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block search %}
+
+<!-- add account form -->
+<form action="" method="post">
+    <!-- form secret key -->
+    {{ search_form.hidden_tag() }}
+
+    <div class="form_box" style="max-width: 500px;">
+        <div>
+            <p>{{ search_form.string_to_search.label }}<br>{{ search_form.string_to_search(size=20) }}</p>
+            <p>{{ search_form.accounts.label }}<br>{{ search_form.accounts }}</p>
+        </div>
+        <div class="form_box_sub" style="padding: 20px; margin-left:14px; margin-top:12px; list-style-type: none;">
+              {{ search_form.places }}
+        </div>
+        <div class="form_box_sub">
+            <input class="custom_button" type='submit' value='Search' style="float: right;">
+        </div>
+    </div>
+
+</form>
+
+{% endblock %} 

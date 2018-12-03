@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+    <head lang="es-ES">
+        {% if title %}
+            <title>mmega - {{ title }}</title>
+        {% else %}
+            <title>mmega</title>
+        {% endif %}
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="shortcut icon" href="/static/img/favicon.ico" type="image/x-icon">
+        <link rel="icon" href="/static/img/favicon.ico" type="image/x-icon">
+        <link rel="stylesheet" href="/static/css/mmega.css">
+        <script type="text/javascript" src="/static/js/mmega.js"></script>
+    </head>
+    
+    <!-- header>
+        <div style="text-align: right" >Login as User</div>       
+    </header  -->
+    
+    <body>
+        <!-- flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <ul style=" padding: 0px 20px;">
+                {% for category, message in messages %}
+                    <li class="{{ category }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        {% endwith %}
+
+        <!-- Navigation bar and accounts -->
+        <div class="main">
+            <!-- Glogal bar -->
+            <div class="global_bar_box">
+                <div>
+                    {% if current_user.is_authenticated %}
+                        <a href='/home' style="text-decoration: none;">
+                            <input class="custom_button" type='button' value='Home'>
+                        </a>
+                        <a href='/search' style="text-decoration: none;">
+                            <input class="custom_button" type='button' value='Search'>
+                        </a>
+                    {% endif %}
+                </div>
+                <div class="global_bar_sub">
+                    {% if current_user.is_authenticated %}
+                        <select class="custom_button" 
+                                style="-moz-appearance: none; -webkit-appearance: none;"
+                                onchange ="if (this.value)window.location.href=this.value">
+                            <option value="/home">{{ current_user.user_name }} &#160; &#x25BE;</option>
+                            <option value="/add_account">Add account</option>
+						    <option value="/user_config_form">User config</option>
+						    <option value="/automation">Automation</option>
+						    <option value="/logout">Logout</option>
+						</select>
+                    {% else %}
+                        <a href='/login' style="text-decoration: none;">
+                            <input class="custom_button" type='button' value='Login'>
+                        </a>
+                        <a href='/register' style="text-decoration: none;">
+                            <input class="custom_button" type='button' value='Register'>
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Block accounts -->   
+            {% block account %}
+            {% endblock %}
+
+            <!-- Block files -->   
+            {% block files %}
+            {% endblock %}
+
+            <!-- Block search results -->   
+            {% block search_results %}
+            {% endblock %} 
+
+        </div>
+            
+        <!-- Content blocks -->
+
+        <!-- Block register_form -->
+        {% block register_form %}
+        {% endblock %}
+
+        <!-- Block login_form -->
+        {% block login_form %}
+        {% endblock %}
+        
+        <!-- Block user_config_form -->
+        {% block user_config_form %}
+        {% endblock %}
+
+        <!-- Block add account -->   
+        {% block add_account %}
+        {% endblock %}
+
+        <!-- Block add account confirm -->   
+        {% block add_account_confirm %}
+        {% endblock %}
+
+        <!-- Block uploaded config file -->   
+        {% block uploaded_config_file %}
+        {% endblock %}
+
+        <!-- Block config  -->   
+        {% block config_form %}
+        {% endblock %}
+        
+        <!-- Block delete -->   
+        {% block delete_form %}
+        {% endblock %}
+
+        <!-- Block upload -->
+        {% block upload %}
+        {% endblock %}
+
+        <!-- Block search -->
+        {% block search %}
+        {% endblock %}
+        
+        <!-- Block automation -->
+        {% block automation %}
+        {% endblock %}
+
+    </body>
+
+    <footer>
+        <!-- p>Application to manage several mega.nz accounts</p -->
+    </footer>
+
+</html>

@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block add_account_confirm %}
+
+<form>
+    <div class="form_box_simple" style="max-width: 450px">
+        {% if added == "yes" %}
+	        <div style="color:rgb(50,205,50); padding-top: 15px; padding-left: 15px;">
+	            <strong>Account added<strong>
+	        </div>
+	    {% elif added == "no" %}
+	        <div style="color:rgb(139,0,0); padding-top: 15px; padding-left: 15px;">
+                <strong>Account failed<strong>
+            </div>
+	    {% else %}
+	       <div style="color:rgb(139,0,0); padding-top: 15px; padding-left: 15px;">
+                <strong>Unknown error<strong>
+            </div>
+        {% endif %}
+    
+        <table style="max-width: 420px; text-align: left; padding-left: 15px; padding-right: 15px; padding-bottom: 15px; overflow: auto;" cellspacing="10">
+            <tr>
+                <th>account name:</th>
+                <td>{{ name }}</td>
+            </tr>
+            <tr>
+                <th>mega email:</th>
+                <td>{{ email }}</td>
+            </tr>
+            <tr>
+                <th>mega password:</th>
+                <td>not shown</td>
+            </tr>
+            <tr>
+                <th>local dir:</th>
+                <td>{{ local_dir }}</td>
+            </tr>
+            <tr>
+                <th>remote dir:</th>
+                <td>{{ remote_dir }}</td>
+            </tr>
+        </table> 
+    </div>
+</form>
+
+
+{% endblock %} 

@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block user_config_form %}
+
+<!-- user config form -->
+<form action="" method="post">
+    <!-- form secret key -->
+    {{ user_config_form.hidden_tag() }}
+
+	<div class="form_box" style="max-width: 270px;">
+        <div style="padding-top: 4px; padding-left: 10px;">
+            <p>{{ user_config_form.user_name.label }}<br>{{ user_config_form.user_name(size=20) }}</p>
+	        <p>{{ user_config_form.user_email.label }}<br>{{ user_config_form.user_email(size=20) }}</p>
+	        <p>{{ user_config_form.user_current_password.label }}<br>{{ user_config_form.user_current_password(size=20) }}</p>
+            <p>{{ user_config_form.new_password.label }}<br>{{ user_config_form.new_password(size=20) }}</p>
+            <p>{{ user_config_form.new_password2.label }}<br>{{ user_config_form.new_password2(size=20) }}</p>
+        </div>
+        <div>&#160; &#160; &#160;</div>
+        <div class="form_box_sub" style="padding-bottom: 10px; padding-right: 10px;">
+            <input class="custom_button" type='submit' value='Change' style="float: right; float: bottom;" >
+        </div>
+    </div>
+
+</form>
+
+{% endblock %} 

@@ -1,0 +1,15 @@
+# Eclipse
+.project
+.pydevproject
+.settings
+
+# Virtualenv
+venv
+
+# Database
+mmega.db
+
+# Folders
+tests
+
+

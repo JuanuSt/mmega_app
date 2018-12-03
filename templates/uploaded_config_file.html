@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block uploaded_config_file %}
+
+{% for row in result_list %}
+
+<form>
+    <div class="form_box_simple">
+         {% if row[5] == "yes" %}
+            <div style="color:rgb(50,205,50); padding-top: 15px; padding-left: 15px;">
+                <strong>Account added<strong>
+            </div>
+        {% elif row[5] == "no" %}
+            <div style="color:rgb(139,0,0); padding-top: 15px; padding-left: 15px;">
+                <strong>Account failed<strong>
+            </div>
+        {% else %}
+           <div style="color:rgb(139,0,0); padding-top: 15px; padding-left: 15px;">
+                <strong>Unknown error<strong>
+            </div>
+        {% endif %}
+    
+        <table style="text-align: left; pading: 15px 0px"; cellspacing="10">
+            <tr>
+                <th style="min-width:145px">account name:</th>
+                <td>{{ row[0] }}</td>
+            </tr>
+            <tr>
+                <th style="min-width:145px">mega email:</th>
+                <td>{{ row[1] }}</td>
+            </tr>
+            <tr>
+                <th style="min-width:145px">mega password:</th>
+                <td>not shown</td>
+            </tr>
+            <tr>
+                <th style="min-width:145px">local dir:</th>
+                <td>{{ row[3] }}</td>
+            </tr>
+            <tr>
+                <th style="min-width:145px">remote dir:</th>
+                <td>{{ row[4] }}</td>
+            </tr>
+        </table> 
+    </div>
+</form>
+{% endfor %}
+
+
+
+{% endblock %} 

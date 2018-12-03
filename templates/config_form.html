@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block config_form %}
+
+<!-- config form -->
+<form action="" method="post">
+    <!-- form secret key -->
+    {{ config_form.hidden_tag() }}
+
+    <div class="form_box" style="max-width: 500px;">
+        <div>
+            <p>{{ config_form.name.label }}<br>{{ config_form.name(size=20)  }}</p>
+            <p style="margin-bottom: 0px;">{{ config_form.local_dir.label }}<br>{{  config_form.local_dir(size=20) }}</p>
+            <p style="margin-bottom: 0px; margin-top: 0px; font-size: 14px;">{{ config_form.local_links }} {{ config_form.local_links.label }}</p>
+            <p>{{ config_form.remote_dir.label }}<br>{{  config_form.remote_dir(size=20) }}</p>
+            
+	    </div>
+        <div class="form_box_sub">
+            <p>{{ config_form.email.label }}<br>{{  config_form.email(size=20) }}</p>
+            <p>{{ config_form.passwd.label }}<br>{{  config_form.passwd(size=20) }}</p>
+        </div>
+        <div class="form_box_sub">
+            <a href='/delete/{{ current_config.id }}' style="text-decoration: none;">
+               <input class="custom_button" type='button' value='Delete account'>
+            </a>
+            <input class="custom_button" type='submit' value='Change' style="float: right;" >
+        </div>
+    </div>
+</form>
+
+
+{% endblock %} 

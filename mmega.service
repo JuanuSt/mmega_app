@@ -1,0 +1,9 @@
+[Unit]
+Description=mmega systemd service.
+
+[Service]
+Type=simple
+ExecStart=/home/kass/mmega_app/venv/bin/python /home/kass/mmega_app/mmega.py
+
+[Install]
+WantedBy=multi-user.target
