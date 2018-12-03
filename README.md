@@ -20,9 +20,9 @@ The application has a responsive design, so it can be displayed correctly on mob
 ### Install
 If you want to install this app in a virtual environment use option 3.
 
-Option 1 - You can download or copy the script (bash) `full_install_mmega.sh`. It will install all the system packages, download this repository, install the python packages and delete i. You will be asked for your sudo password.
+Option 1 - You can download or copy the script `full_install_mmega.sh` (bash). It will install all the system packages, download this repository, install the python packages, copy mmega.service and delete unnecessary files. You will be asked for your sudo password.
 
-Option 2 - Clone this repository: `git clone git@bitbucket.org:juanust/mmega_app.git`. Then run the `install_dependencies.sh` script from the mmega_app directory: `./install_dependencies.sh` (you will be asked for your sudo password).
+Option 2 - Clone this repository: ` git clone https://juanust@bitbucket.org/juanust/mmega_app.git -b master`. Then run the `install_dependencies.sh` script from the mmega_app directory: `./install_dependencies.sh` (you will be asked for your sudo password).
 
 Option 3 - Follow these steps after cloning the repository:
 
@@ -33,18 +33,18 @@ Option 3 - Follow these steps after cloning the repository:
 * Install virtualenv `sudo apt install virtualenv` (optional). Change to the mmega_app directory and create a virtual environment. Active the virtualenv before running the next step.
 * Install python requeriments `pip install -r requeriments.txt`. Run this command from the mmega_app directory.
 
-Before running the application, choose a configuration (lines 25 and 26 in mmega.py):
+Before running the application installed with any of the three options, choose a configuration (lines 25 and 26 in mmega.py):
 
 * production (config.py file). **Recommended**.
 * dev        (config.py file inside the instance folder, **set by default**)
 
 In production config you must add the variable SECRET_KEY to the environment where the application is executed (`export SECRET_KEY = 'very_secure_secret_key'`). In the dev configuration a default secret key already exists to test the installation. 
 
-If you wish, there is also a systemd service for this application (`mmega.service`). Edit that file to adapt it to your installation path and copy it to /etc/systemd/system.
+If you wish, there is also a systemd service for this application (`mmega.service`). Edit that file to adapt it to your installation path and copy it to /etc/systemd/system. This is not necessary if you use option 1.
 
-The default database is SQLite, however, thanks to the magic of SQLAlchemy you can use PostgreSQL as a database. Be sure that 'psycopg2-binary' package is installed. Install postgresql package, create a database (mmega) and uncomment and modify the connection in the config.py file (line 15 in both production and dev config.py files).
+The default database is SQLite, however, thanks to the magic of SQLAlchemy you can use PostgreSQL as a database. Be sure that 'psycopg2-binary' package is installed (installed by default, see requirements.txt). Install postgresql package, create a database (mmega) and uncomment and modify the connection in the config.py file (line 15 in both production and dev config.py files).
 
-After installation you can delete the images folder, and the files full_install_mmega.sh, install_dependencies.sh, mmega.service, requeiments.txt and README.md. If you have already moved to the production configuration, you can also delete the instance folder.
+After installation you can delete the images folder and the files full_install_mmega.sh, install_dependencies.sh, mmega.service, requeiments.txt and README.md (this is not necessary if you use option 1). If you have already moved to the production configuration, you can also delete the instance folder.
 
 ### How use it
 **1.- Register**
