@@ -15,7 +15,8 @@
 
 # Install system packages
   sudo -S apt update && sudo apt -y upgrade
-  sudo apt-get -y install git
+  sudo apt -y install git
+  sudo apt -y install wget
   sudo apt -y install megatools
   sudo apt -y install python-pip
   wget -q https://mega.nz/linux/MEGAsync/xUbuntu_16.04/amd64/megacmd-xUbuntu_16.04_amd64.deb
