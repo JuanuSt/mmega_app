@@ -10,7 +10,7 @@ This application is designed to be used in home networks and **should not be exp
 The application has a responsive design, so it can be displayed correctly on mobile devices.
 
 ### Dependencies
-* Ubuntu 16.04
+* Ubuntu 18.04 (it works too with 16.04, adapt MEGAcmd to this Ubuntu distro)
 * megatools 1.9.97
 * MEGAcmd 0.9.9
 * python-pip 18.1 (python 2.7)
@@ -27,8 +27,8 @@ Option 2 - Clone this repository: ` git clone https://juanust@bitbucket.org/juan
 Option 3 - Follow these steps after cloning the repository:
 
 * Install megatools `sudo apt install megatools`.
-* Download MEGAcmd `wget -q https://mega.nz/linux/MEGAsync/xUbuntu_16.04/amd64/megacmd-xUbuntu_16.04_amd64.deb` (or another distro)
-* Install MEGAcmd and dependecies `sudo apt -y install -f ./megacmd-xUbuntu_16.04_amd64.deb`
+* Download MEGAcmd `wget -q https://mega.nz/linux/MEGAsync/xUbuntu_18.04/amd64/megacmd-xUbuntu_18.04_amd64.deb` (or another distro)
+* Install MEGAcmd and dependecies `sudo apt -y install -f ./megacmd-xUbuntu_18.04_amd64.deb`
 * Install python-pip `sudo apt install python-pip`.
 * Install virtualenv `sudo apt install virtualenv` (optional). Change to the mmega_app directory and create a virtual environment. Active the virtualenv before running the next step.
 * Install python requeriments `pip install -r requeriments.txt`. Run this command from the mmega_app directory.
