@@ -1,8 +1,6 @@
 # -*- coding: UTF-8 -*-
-"""
-mmega_1 
-"""
-# Imports [venv see requeriments.txt]
+
+# Imports [see requeriments.txt]
 import os, tablib, subprocess, humanfriendly, tempfile, md5, hashlib, shutil, time
 from datetime import datetime, date
 from crontab import CronTab
@@ -18,7 +16,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 
 # Define the WSGI application object
-#app = Flask(__name__)
 app = Flask(__name__, instance_relative_config=True)
 
 # Configuration
@@ -202,9 +199,6 @@ class AutomationForm(FlaskForm):
         ('every_month', 'month'),
         ('every_year', 'year')
         ], validators=[DataRequired()], default='every_month')
-    #date_cron_update = DateField('update on', format='%Y-%m-%d')
-    #update_auto = BooleanField('update automatically', default="checked")
-    #cron_time = TimeField('at')
     hour = IntegerField('hour', validators=[DataRequired()], default='22')
     minute = IntegerField('minute', validators=[DataRequired()], default='00')
     set_button = SubmitField('Set')
@@ -222,7 +216,7 @@ class AccountMega:
         self.email = email
         self.passwd = passwd
 
-    # Method ls
+    # Method df
     def df(self):
         # Create tmp megarc file
         tmp = tempfile.NamedTemporaryFile(delete=True)
@@ -1162,7 +1156,7 @@ def sync(id):
         return redirect('/home')
     elif config.local_dir:
         # logout before (in case of crash)
-        os.system('mega-logout')
+        subprocess.call('mega-logout')
 
         passwd = '\'' + config.passwd + '\''
         os.system('mega-login %s %s' % (config.email, passwd))
@@ -1174,12 +1168,20 @@ def sync(id):
         
         command = "mega-sync '%s' '%s'" % (config.local_dir, remote_dir)
         os.system(command)
+        time.sleep(5) # Give room to mega-sync to create the proccess, it starts as synced.
         
         while subprocess.check_output('mega-sync').splitlines()[1].split()[4] != 'Synced':
             time.sleep(5)
         else:
-            os.system('mega-logout')
- 
+            subprocess.call('mega-logout')
+
+            # kill mega-cmd-server processes
+            mega_server_pids = subprocess.Popen(['pgrep','mega-cmd-server'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+            for mega_server_pid in mega_server_pids:
+                if mega_server_pid:
+                    print mega_server_pid.rstrip()
+                    os.system('kill %s' % mega_server_pid.rstrip())
+
         # Set State Hash to non updated
         remote_state_hash.is_update = False
         remote_state_hash.state_hash = 'changed'
