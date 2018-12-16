@@ -133,7 +133,7 @@ def md5sum(filename, blocksize=65536):
     return hash.hexdigest()
 
 def create_local_hash(local_dir):
-        # Test dir read access
+    # Test dir read access
     if not local_dir:
         return 0
     elif not os.access(local_dir, os.R_OK):
@@ -249,8 +249,6 @@ if __name__ == '__main__':
                         else:
                             print "%s - error getting remote files" % account.name
             else:
-                #if update_automatically:
-                # else Set account remote as not updated
                 account_state_hash = db_session.query(StateHash).filter_by(config_id = account.id, file_type = 'remote').one()
                 account_state_hash.is_update = False
                 print "%s - set to non updated by disk stats" % account.name
