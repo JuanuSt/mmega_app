@@ -33,7 +33,7 @@
         {% for file in results %}
             <tr>
                 <td style="word-break: break-all; valign="top"> 
-                    <a href="{{ file.link | safe }}" style="text-decoration: none; color: white;">
+                    <a target="_blank" href="{{ file.link | safe }}" style="text-decoration: none; color: white;">
                         {{ file.filename | safe }}
                     </a>
                 </td>

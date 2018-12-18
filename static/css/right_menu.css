@@ -1,0 +1,74 @@
+.rmenu {
+    display: none;
+    z-index: 1000;
+    position: absolute;
+    overflow: hidden;
+    border: 1px solid #595959;
+    white-space: nowrap;
+    border-radius: 10px;
+    padding: 0;
+	opacity: 0;
+	-webkit-transition:opacity 200ms;
+    -moz-transition:opacity 200ms;
+    -o-transition:opacity 200ms;
+    -ms-transition:opacity 200ms;
+}
+
+.rmenu-custom {
+	background-color: #d31b00;
+	color: white;
+}
+.rmenu-black {
+    background: black;
+    color: white;
+}
+
+.rmenu-white {
+    background: white;
+    color: black;
+}
+
+.rmenu-white-shadow {
+	box-shadow: 0 0 15px grey;
+}
+
+.rmenu-black-shadow {
+	box-shadow: 0 0 15px black;
+}
+
+.rmenu li {
+    padding: 5px 8px;
+    cursor: pointer;
+}
+
+.rmenu li.disabled {
+    color: darkgrey;
+	cursor: default;
+}
+
+.rmenu-black li:hover {
+    background-color: #284160;
+}
+
+.rmenu-white li:hover {
+    background-color: #81B2D6;
+}
+
+.rmenu-black li.disabled:hover {
+    background-color: #202020;
+}
+
+.rmenu-white li.disabled:hover {
+    background-color: lightgrey;
+}
+
+.rmenu i {
+    padding-right: 6px
+}
+
+.rmenu hr {
+    background-color: grey;
+    height: 1px;
+    border: 0;
+    margin: 2px 0px;
+}

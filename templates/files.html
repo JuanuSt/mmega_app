@@ -2,6 +2,11 @@
 
 {% block files %}
 
+<head>
+    <link rel="stylesheet" href="/static/css/right_menu.css">
+    <script type="text/javascript" src="/static/js/right_menu.js"></script>
+</head>
+
 <!-- Tool bar -->
 <div class="global_bar_box" style="padding: 0px;">
     <div style="padding: 1px 8px;" > 
@@ -21,11 +26,20 @@
 
         {% for remote_file in remote_files %}
             <tr>
-                <td style="word-break: break-all;" valign="top"> 
-	                <a href="{{ remote_file.link | safe}}" style="text-decoration: none; color: white;">
+                <td style="word-break: break-all;" valign="top" > 
+	                <a class="rmenu-host rmenu-id-{{ remote_file.id }}" target="_blank" href="{{ remote_file.link | safe}}" 
+	                   style="text-decoration: none; color: white;" id="remote_file_id_{{ remote_file.id }}">
 	                    {{ remote_file.filename | safe}}
 	                </a>
                 </td>
+                <!-- Right menu -->
+				<ul class="rmenu rmenu-id-{{ remote_file.id }} rmenu-custom rmenu-white-shadow">
+					<li style="margin-top: 4px;">{{ remote_file.filename | safe}}</li>
+					<hr>
+				    <li data-action="move">Move</li>
+					<li data-action="delete">Delete</li>
+					<li data-action="streaming">Streaming</li>
+				</ul>
             </tr>
         {% endfor %}
     </table>
@@ -42,7 +56,7 @@
             <tr>
             	{% if config.local_links %}
 	                <td style="word-break: break-all;" valign="top"> 
-	                    <a href="file://///{{ local_file.path | safe }}" style="text-decoration: none; color: white;">
+	                    <a target="_blank" href="file://///{{ local_file.path | safe }}" style="text-decoration: none; color: white;">
 	                        {{ local_file.filename | safe }}
 	                    </a>
 	                </td>

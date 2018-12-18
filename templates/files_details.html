@@ -24,7 +24,7 @@
         {% for remote_file in remote_files %}
             <tr>
                 <td style="word-break: break-all;" valign="top"> 
-                    <a href="{{ remote_file.link | safe}}" style="text-decoration: none; color: white;">
+                    <a target="_blank" href="{{ remote_file.link | safe}}" style="text-decoration: none; color: white;">
                         {{ remote_file.path | safe }}
                     </a>
                 </td>
@@ -48,13 +48,13 @@
             <tr>
                 {% if config.local_links %}
 	                <td style="word-break: break-all;" valign="top"> 
-	                    <a href="file://///{{ local_file.path | safe }}" style="text-decoration: none; color: white;">
+	                    <a target="_blank" href="file://///{{ local_file.path | safe }}" style="text-decoration: none; color: white;">
 	                        {{ local_file.path | safe }}
 	                    </a>
 	                </td>
                 {% else %}
 	                <td style="word-break: break-all;" valign="top"> 
-	                    <a href="{{ local_file.path | safe }}" style="text-decoration: none; color: white;">
+	                    <a target="_blank" href="{{ local_file.path | safe }}" style="text-decoration: none; color: white;">
 	                        {{ local_file.path | safe }}
 	                    </a>
 	                </td>
