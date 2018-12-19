@@ -209,6 +209,7 @@ if __name__ == '__main__':
                             #if update_automatically:
                             # else Set account local as not updated
                             account_state_hash = db_session.query(StateHash).filter_by(config_id = account.id, file_type = 'local').one()
+                            account_state_hash.state_hash = 'changed'
                             account_state_hash.is_update = False
                             print "%s - set to non updated by local hash" % account.name
                             db_session.commit()
@@ -223,6 +224,7 @@ if __name__ == '__main__':
                                         #if update_automatically:
                                         # else Set account remote as not updated
                                         account_state_hash = db_session.query(StateHash).filter_by(config_id = account.id, file_type = 'remote').one()
+                                        account_state_hash.state_hash = 'changed'
                                         account_state_hash.is_update = False
                                         print "%s - set to non updated by remote hash" % account.name
                                         db_session.commit()
@@ -241,6 +243,7 @@ if __name__ == '__main__':
                                     #if update_automatically:
                                     # else Set account remote as not updated
                                     account_state_hash = db_session.query(StateHash).filter_by(config_id = account.id, file_type = 'remote').one()
+                                    account_state_hash.state_hash = 'changed' 
                                     account_state_hash.is_update = False
                                     print "%s - set to non updated by remote hash" % account.name
                                     db_session.commit()

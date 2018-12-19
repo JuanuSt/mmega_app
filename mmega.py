@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 
 # Imports [see requeriments.txt]
-import os, tablib, subprocess, humanfriendly, tempfile, md5, hashlib, shutil, time
+import os, sys, tablib, subprocess, humanfriendly, tempfile, md5, hashlib, shutil, time
 from datetime import datetime, date
 from crontab import CronTab
 from flask import Flask, url_for, render_template, request, redirect, flash
@@ -13,7 +13,9 @@ from wtforms import StringField, PasswordField, BooleanField, SubmitField, Selec
 from wtforms.validators import ValidationError, InputRequired, DataRequired, Email, Length, EqualTo
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
-
+from redis import Redis
+import rq
+from rq import get_current_job
 
 # Define the WSGI application object
 app = Flask(__name__, instance_relative_config=True)
@@ -29,6 +31,10 @@ FNULL = open(os.devnull, 'w')
 # Define the database object
 db = SQLAlchemy(app)
 
+# Connect to rq server
+app.redis = Redis.from_url(app.config['REDIS_URL'])
+app.task_queue = rq.Queue('mmega-tasks', connection=app.redis)
+
 
 ##############################################################################################
 # Models #####################################################################################
@@ -38,15 +44,30 @@ class User(UserMixin, db.Model):
     user_name = db.Column(db.String(64), index=True, unique=True)
     user_email = db.Column(db.String(120), index=True)
     user_password_hash = db.Column(db.String(128))
+    tasks = db.relationship('Task', backref='user', lazy='dynamic')
 
     def __repr__(self):
         return '<User {}>'.format(self.user_name)    
 
+    # Register methods
     def set_password(self, password):
         self.user_password_hash = generate_password_hash(password)
 
     def check_password(self, password):
         return check_password_hash(self.user_password_hash, password)
+
+    # Redis methods
+    def launch_task(self, name, description, *args, **kwargs):
+        rq_job = current_app.task_queue.enqueue('app.tasks.' + name, self.id, *args, **kwargs)
+        task = Task(id=rq_job.get_id(), name=name, description=description, user=self)
+        db.session.add(task)
+        return task
+
+    def get_tasks_in_progress(self):
+        return Task.query.filter_by(user=self, complete=False).all()
+
+    def get_task_in_progress(self, name):
+        return Task.query.filter_by(name=name, user=self, complete=False).first()
 
 class Config(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -110,6 +131,24 @@ class FileStats(db.Model):
     to_down = db.Column(db.Integer)
     to_up = db.Column(db.Integer)
     last_update = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+class Task(db.Model):
+    id = db.Column(db.String(36), primary_key=True) # id as string, using rq job identifiers
+    name = db.Column(db.String(128), index=True)
+    description = db.Column(db.String(128))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    complete = db.Column(db.Boolean, default=False)
+
+    def get_rq_job(self):
+        try:
+            rq_job = rq.job.Job.fetch(self.id, connection=current_app.redis)
+        except (redis.exceptions.RedisError, rq.exceptions.NoSuchJobError):
+            return None
+        return rq_job
+
+    def get_progress(self):
+        job = self.get_rq_job()
+        return job.meta.get('progress', 0) if job is not None else 100
 
 # Create model tables
 db.create_all()
@@ -287,33 +326,28 @@ class AccountMega:
             return output
 
     # Method put
+    # @TODO check command
     def put(self, local_file_path, remote_path):
         # Create tmp megarc file
         tmp = tempfile.NamedTemporaryFile(delete=True)
         tmp.write('[Login]\nUsername = %s\nPassword = %s\n' % (str(self.email), str(self.passwd)))
         tmp.flush()
 
-        command = "megaput --no-progress --config=%s '%s' --path='%s' > /dev/null 2>&1" % (tmp.name, local_file_path, remote_path)
+        command = "megaput --reload --no-progress --config=%s '%s' --path='%s' > /dev/null 2>&1" % (tmp.name, local_file_path, remote_path)
         os.system(command)
         tmp.close()  # deletes tmp megarc file
 
     # Metrod rm
-    def rm(self, file_path):
-        print 'Using method rm', '\n' , 'Using account:', self.email, '\n'
+    # @TODO check command
+    def rm(self, remote_file_path):
+        # Create tmp megarc file
+        tmp = tempfile.NamedTemporaryFile(delete=True)
+        tmp.write('[Login]\nUsername = %s\nPassword = %s\n' % (str(self.email), str(self.passwd)))
+        tmp.flush()
 
-        command = 'megarm --ignore-config-file -u "%s" -p "%s" "%s"' % \
-        (self.email, self.passwd, file_path)
-
-        if file_path.startswith('/Root'):
-            pass
-        else:
-            file_path = '/Root/' + file_path
-
-        print 'Deleting', file_path
-        print command 
-        delete = subprocess.Popen(command , shell=True, stderr=subprocess.PIPE).communicate()
-
-        print delete
+        command = "megarm --reload --config=%s '%s' " % (tmp.name, remote_file_path)
+        os.system(command)
+        tmp.close()  # deletes tmp megarc file
 
 
 ##############################################################################################
@@ -697,6 +731,17 @@ def update_file_stats(id):
 
     db.session.commit()
 
+# Set task progress (Redis)
+def _set_task_progress(progress):
+    job = get_current_job()
+    if job:
+        job.meta['progress'] = progress
+        job.save_meta()
+        task = Task.query.get(job.get_id())
+        task.user.add_notification('task_progress', {'task_id': job.get_id(),'progress': progress})
+        if progress >= 100:
+            task.complete = True
+        db.session.commit()
 
 ##############################################################################################
 # Routes #####################################################################################
@@ -1086,6 +1131,26 @@ def files_details(id):
                            disk_stats = disk_stats, file_stats = file_stats,
                            remote_files = remote_files, local_files = local_files)
 
+@app.route('/delete_remote_file/<file_id>', methods=['GET', 'POST'])
+@login_required
+def delete_remote_file(file_id):
+    remote_file = Files.query.filter_by(id = file_id).one() # Get file info
+    acc = Config.query.filter_by(id = remote_file.config_id ).one() # Get accounts params
+       
+    # Instanciate accountmega handler and delete
+    accmega = AccountMega(acc.id, acc.name, acc.email, acc.passwd)
+    accmega.rm(remote_file.path)
+    
+    # Set as not updated
+    acc_state_hash = StateHash.query.filter_by(config_id= acc.id, file_type = 'remote').one()
+    acc_state_hash.state_hash = 'changed'
+    acc_state_hash.is_update = False
+    db.session.commit()
+    
+    flash('%s - file %s has been delete from remote directory.' % (acc.name, unicode(remote_file.filename)), 'success')
+    flash('%s - you should update this account' % acc.name, 'warning')
+    return redirect('/files/%s' % acc.id)
+
 @app.route('/update/<id>', methods=['GET', 'POST'])
 @login_required
 def update(id):
@@ -1116,33 +1181,43 @@ def upload(id):
             return redirect(request.url)
 
         file = request.files['file']
-        #filename = secure_filename(upload_file_form.file.data.filename)
-        filename = upload_file_form.file.data.filename
+        filename = secure_filename(upload_file_form.file.data.filename)
+        #filename = upload_file_form.file.data.filename
+
+        # Set task
+        try:      
+            user_id = current_user.id
+            _set_task_progress(0)
+                    
+            # Create tmp dir and save file
+            tmp_dir = tempfile.mkdtemp()
+            upload_file_form.file.data.save(os.path.join(tmp_dir, filename))
+            _set_task_progress(50)
+    
+            # Instanciate accountmega handler
+            accmega = AccountMega(config.id, config.name, config.email, config.passwd)
+         
+            # Upload from tmp dir
+            if accmega.ls(upload_file_form.remote_dir_dst.data):
+                accmega.put(os.path.join(tmp_dir, filename), os.path.join(upload_file_form.remote_dir_dst.data, filename))
+                _set_task_progress(100)
                 
-        # Create tmp dir
-        tmp_dir = tempfile.mkdtemp()
-        
-        upload_file_form.file.data.save(os.path.join(tmp_dir, filename))
+                # Set State Hash to non updated
+                remote_state_hash.state_hash = 'changed'
+                remote_state_hash.is_update = False
+                db.session.commit()
+                
+                flash('%s - file uploaded (%s)' % (config.name, filename), 'success') 
+                flash('%s - you should update this account' % config.name, 'warning')
+            else:
+                _set_task_progress(100)
+                flash('%s - remote target directory does not exists (%s)' % (config.name, upload_file_form.remote_dir_dst.data), 'error')
+            # Delete tmp dir
+            shutil.rmtree(tmp_dir)
+        except:
+            _set_task_progress(100)
+            app.logger.error('Unhandled exception', exc_info=sys.exc_info())
 
-        # Instanciate accountmega handler
-        accmega = AccountMega(config.id, config.name, config.email, config.passwd)
-     
-        # Upload from tmp dir
-        if accmega.ls(upload_file_form.remote_dir_dst.data):
-            accmega.put(os.path.join(tmp_dir, filename), os.path.join(upload_file_form.remote_dir_dst.data, filename))
-            
-            # Set State Hash to non updated
-            remote_state_hash.is_update = False
-            remote_state_hash.state_hash = 'changed'
-            db.session.commit()
-            
-            flash('%s - file uploaded (%s). You have to update this account.' % (config.name, filename), 'success')
-        else:
-            flash('%s - remote target directory does not exists (%s)' % (config.name, upload_file_form.remote_dir_dst.data), 'error')
-        # Delete tmp dir
-        shutil.rmtree(tmp_dir)
-
-    #flash('%s - is updated' % config.name, 'success')
     return render_template('upload.html', title = 'upload', upload_file_form = upload_file_form )
 
 @app.route('/sync/<id>', methods=['GET'])
@@ -1183,11 +1258,12 @@ def sync(id):
                     os.system('kill %s' % mega_server_pid.rstrip())
 
         # Set State Hash to non updated
-        remote_state_hash.is_update = False
         remote_state_hash.state_hash = 'changed'
+        remote_state_hash.is_update = False
         db.session.commit()
      
-        flash('%s - is synced. You have to update the account.' % config.name, 'success')
+        flash('%s - is synced. You have to update the account' % config.name, 'success')
+        flash('%s - you should update this account' % config.name, 'warning')
         return redirect('/home')
     else:
         flash('%s - error while syncing' % config.name, 'error')

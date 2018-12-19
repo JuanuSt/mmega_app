@@ -22,7 +22,7 @@ onDOMReady(function(){
 	});
 	Array.from(document.querySelectorAll(".rmenu li")).forEach((x,i)=>{
 		addListener(x,"click",function(){
-			if(eval("typeof(handleMenuAction)==typeof(Function)")&&!x.classList.contains("disabled")) handleMenuAction(x.getAttribute("data-action"));
+			if(eval("typeof(handleMenuAction)==typeof(Function)")&&!x.classList.contains("disabled")) handleMenuAction(x.getAttribute("data-action"), x.getAttribute("data-file") );
 			fadeElement(x.parentElement,'hide')
 		})
 	});
@@ -32,8 +32,11 @@ onDOMReady(function(){
 });
 
 /* Right menu actions */
-function handleMenuAction(evt) {
-	alert("Action required: " + evt);
+function handleMenuAction(evt, file_id) {
+	if (evt == 'delete')
+		window.location.href=('/delete_remote_file/' + file_id);
+	else
+		alert("Action required else: " + file_id );
 }
 
 

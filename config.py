@@ -16,5 +16,8 @@ SQLALCHEMY_DATABASE_URI = 'sqlite:///mmega.db'
 SQLALCHEMY_ECHO = False
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+# Redis server
+REDIS_URL = os.environ.get('REDIS_URL')
+
 # Security
 SECRET_KEY = os.environ.get('SECRET_KEY')
