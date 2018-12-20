@@ -10,7 +10,7 @@
 <!-- Tool bar -->
 <div class="global_bar_box" style="padding: 0px;">
     <div style="padding: 1px 8px;" > 
-	    <input class="custom_button" type='submit' value='Details' onClick=" files_details('{{ config.id }}')"/>
+        <input class="custom_button" type='submit' value='Details' onClick=" files_details('{{ config.id }}')"/>
     </div>
     <div style="margin-top: 8px; margin-left: auto;">{{ config.name }}</div>
     <div style="padding: 0px 16px; padding-top: 10px; margin-left: auto;">
@@ -27,19 +27,19 @@
         {% for remote_file in remote_files %}
             <tr>
                 <td style="word-break: break-all;" valign="top" > 
-	                <a class="rmenu-host rmenu-id-{{ remote_file.id }}" target="_blank" href="{{ remote_file.link | safe}}" 
-	                   style="text-decoration: none; color: white;" id="remote_file_id_{{ remote_file.id }}">
-	                    {{ remote_file.filename | safe}}
-	                </a>
+                    <a class="rmenu-host rmenu-id-{{ remote_file.id }}" target="_blank" href="{{ remote_file.link | safe}}" 
+                       style="text-decoration: none; color: white;" id="remote_file_id_{{ remote_file.id }}">
+                        {{ remote_file.filename | safe}}
+                    </a>
                 </td>
                 <!-- Right menu -->
-				<ul class="rmenu rmenu-id-{{ remote_file.id }} rmenu-custom rmenu-white-shadow">
-					<li style="margin-top: 4px;">{{ remote_file.filename | safe}}</li>
-					<hr>
-				    <li data-action="move" data-file="{{ remote_file.id }}">Move</li>
-					<li data-action="delete" data-file="{{ remote_file.id }}">Delete</li>
-					<li data-action="streaming" data-file="{{ remote_file.id }}">Streaming</li>
-				</ul>
+                <ul class="rmenu rmenu-id-{{ remote_file.id }} rmenu-custom rmenu-white-shadow">
+                    <li style="margin-top: 4px;">{{ remote_file.filename | safe}}</li>
+                    <hr>
+                    <li data-action="move" data-file="{{ remote_file.id }}">Move</li>
+                    <li data-action="delete" data-file="{{ remote_file.id }}">Delete</li>
+                    <li data-action="streaming" data-file="{{ remote_file.id }}">Streaming</li>
+                </ul>
             </tr>
         {% endfor %}
     </table>
@@ -54,18 +54,18 @@
 
         {% for local_file in local_files %}
             <tr>
-            	{% if config.local_links %}
-	                <td style="word-break: break-all;" valign="top"> 
-	                    <a target="_blank" href="file://///{{ local_file.path | safe }}" style="text-decoration: none; color: white;">
-	                        {{ local_file.filename | safe }}
-	                    </a>
-	                </td>
+                {% if config.local_links %}
+                    <td style="word-break: break-all;" valign="top"> 
+                        <a target="_blank" href="file://///{{ local_file.path | safe }}" style="text-decoration: none; color: white;">
+                            {{ local_file.filename | safe }}
+                        </a>
+                    </td>
                 {% else %}
-	                <td style="word-break: break-all;" valign="top"> 
-	                    <a href="{{ local_file.path | safe }}" style="text-decoration: none; color: white;">
-	                        {{ local_file.filename | safe }}
-	                    </a>
-	                </td>
+                    <td style="word-break: break-all;" valign="top"> 
+                        <a href="{{ local_file.path | safe }}" style="text-decoration: none; color: white;">
+                            {{ local_file.filename | safe }}
+                        </a>
+                    </td>
                 {% endif %}
             </tr>
         {% endfor %}

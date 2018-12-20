@@ -13,11 +13,11 @@
         <link rel="stylesheet" href="/static/css/mmega.css">
         <script type="text/javascript" src="/static/js/mmega.js"></script>
     </head>
-    
+
     <!-- header>
-        <div style="text-align: right" >Login as User</div>       
+        <div style="text-align: right" >Login as User</div>
     </header  -->
-    
+
     <body>
         <!-- flash messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -51,10 +51,10 @@
                                 onchange ="if (this.value)window.location.href=this.value">
                             <option value="/home">{{ current_user.user_name }} &#160; &#x25BE;</option>
                             <option value="/add_account">Add account</option>
-						    <option value="/user_config_form">User config</option>
-						    <option value="/automation">Automation</option>
-						    <option value="/logout">Logout</option>
-						</select>
+                            <option value="/user_config_form">User config</option>
+                            <option value="/automation">Automation</option>
+                            <option value="/logout">Logout</option>
+                        </select>
                     {% else %}
                         <a href='/login' style="text-decoration: none;">
                             <input class="custom_button" type='button' value='Login'>
@@ -66,22 +66,20 @@
                 </div>
             </div>
 
-            <!-- Block accounts -->   
+            <!-- Block accounts -->
             {% block account %}
             {% endblock %}
 
-            <!-- Block files -->   
+            <!-- Block files -->
             {% block files %}
             {% endblock %}
 
-            <!-- Block search results -->   
+            <!-- Block search results -->
             {% block search_results %}
             {% endblock %} 
-
         </div>
-            
-        <!-- Content blocks -->
 
+        <!-- Content blocks -->
         <!-- Block register_form -->
         {% block register_form %}
         {% endblock %}
@@ -94,24 +92,28 @@
         {% block user_config_form %}
         {% endblock %}
 
-        <!-- Block add account -->   
+        <!-- Block add account -->
         {% block add_account %}
         {% endblock %}
 
-        <!-- Block add account confirm -->   
+        <!-- Block add account confirm -->
         {% block add_account_confirm %}
         {% endblock %}
 
-        <!-- Block uploaded config file -->   
+        <!-- Block uploaded config file -->
         {% block uploaded_config_file %}
         {% endblock %}
 
-        <!-- Block config  -->   
+        <!-- Block config  -->
         {% block config_form %}
         {% endblock %}
         
-        <!-- Block delete -->   
+        <!-- Block delete account -->
         {% block delete_form %}
+        {% endblock %}
+
+        <!-- Block move file -->
+        {% block move %}
         {% endblock %}
 
         <!-- Block upload -->
@@ -125,7 +127,6 @@
         <!-- Block automation -->
         {% block automation %}
         {% endblock %}
-
     </body>
 
     <footer>

@@ -219,7 +219,13 @@ class UploadConfigForm(FlaskForm):
 
 class UploadFileForm(FlaskForm):
     file = FileField(validators=[DataRequired()])
-    remote_dir_dst = StringField('remote dir target', validators=[DataRequired(), Length(0, 4096)], render_kw={"placeholder": "/remote/dir/target"})
+    remote_dir_dst = StringField('remote dir', validators=[DataRequired(), Length(0, 4096)], render_kw={"placeholder": "/remote/dir/target"})
+
+class MoveForm(FlaskForm):
+    file_to_move = StringField('file to move', validators=[DataRequired(), Length(0, 255)])
+    acc_dst = SelectField('destination account', coerce=int, validators=[InputRequired()])
+    remote_dir_dst = StringField('remote dir', default='/Root', validators=[DataRequired(), Length(0, 4096)], render_kw={"placeholder": "/remote/dir/target"})
+    move_button = SubmitField('Move')
 
 class SearchForm(FlaskForm):
     string_to_search = StringField('string to search', validators=[DataRequired(), Length(0, 255)])
@@ -241,7 +247,8 @@ class AutomationForm(FlaskForm):
     hour = IntegerField('hour', validators=[DataRequired()], default='22')
     minute = IntegerField('minute', validators=[DataRequired()], default='00')
     set_button = SubmitField('Set')
-    
+
+
 ##############################################################################################
 # megatools ##################################################################################
 ##############################################################################################
@@ -314,7 +321,7 @@ class AccountMega:
             test_command = 1
 
         if test_command != 0:
-            flash('Account %s failed to connect to mega' % (self.name), 'error')
+            flash('%s - failed to connect to mega' % (self.name), 'error')
             tmp.close()
             return 1
         else:
@@ -364,7 +371,6 @@ login_manager.login_message_category = "warning"
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(user_id)
-
 
 # Check allowed ext in uploaded config file
 def allowed_config_file(filename):
@@ -1001,7 +1007,7 @@ def add_account():
 
                     # Try update if not delete config data and do not insert disk data
                     update_disk_try = get_disk_data(acc.id)
-                
+
                     if update_disk_try == 1:
                         added="no"
                         result_list.append([ acc.name, acc.email, acc.passwd, acc.local_dir, acc.remote_dir, added])
@@ -1040,7 +1046,7 @@ def config(id):
 
     # get account params
     current_config = Config.query.filter_by(id=id).first()
-        
+
     if request.method == 'GET':
         config_form.name.data = current_config.name
         config_form.email.data = current_config.email
@@ -1125,31 +1131,140 @@ def files_details(id):
     # Get files info
     remote_files = Files.query.filter_by(config_id=config.id, is_dir=False, file_type='remote').order_by(Files.filename.asc()).all()   
     local_files = Files.query.filter_by(config_id=config.id, is_dir=False, file_type='local' ).order_by(Files.filename.asc()).all()   
-    
+
     # Show files
     return render_template('files_details.html', title = 'files details', config = config,
                            disk_stats = disk_stats, file_stats = file_stats,
                            remote_files = remote_files, local_files = local_files)
 
-@app.route('/delete_remote_file/<file_id>', methods=['GET', 'POST'])
+@app.route('/delete_remote_file/<file_id>', methods=['GET'])
 @login_required
 def delete_remote_file(file_id):
     remote_file = Files.query.filter_by(id = file_id).one() # Get file info
     acc = Config.query.filter_by(id = remote_file.config_id ).one() # Get accounts params
-       
+
     # Instanciate accountmega handler and delete
     accmega = AccountMega(acc.id, acc.name, acc.email, acc.passwd)
     accmega.rm(remote_file.path)
-    
+
     # Set as not updated
     acc_state_hash = StateHash.query.filter_by(config_id= acc.id, file_type = 'remote').one()
     acc_state_hash.state_hash = 'changed'
     acc_state_hash.is_update = False
     db.session.commit()
-    
+
     flash('%s - file %s has been delete from remote directory.' % (acc.name, unicode(remote_file.filename)), 'success')
     flash('%s - you should update this account' % acc.name, 'warning')
     return redirect('/files/%s' % acc.id)
+
+@app.route('/move/<file_id>',methods=['GET', 'POST'])
+@login_required
+def move_file(file_id):
+    move_form = MoveForm()
+    remote_file = Files.query.filter_by(id = file_id).one() # Get file info
+    config = Config.query.filter_by(id = remote_file.config_id).one()
+
+    user_accounts = Config.query.filter(Config.user_id == current_user.id, Config.id != config.id).all()
+    user_accounts_list = [(i.id, i.name) for i in user_accounts]
+    move_form.acc_dst.choices = user_accounts_list
+
+    if request.method == 'GET':
+        move_form.file_to_move.data = remote_file.path
+
+    if request.method == 'POST' and move_form.validate_on_submit():
+        # Get dst  params
+        config_acc_dst = Config.query.filter_by(id = move_form.acc_dst.data).one()
+        dst_dir = move_form.remote_dir_dst.data
+
+        # Logout using megacmd
+        subprocess.call('mega-logout')
+        passwd = '\'' + config_acc_dst.passwd + '\''
+        os.system('mega-login %s %s' % (config_acc_dst.email, passwd))
+
+        if dst_dir == '/Root':
+            dst_dir = '/'
+        else:
+            dst_dir = '/' + dst_dir.lstrip('/Root')
+
+        # Test if remote dst dir exists before import
+        command = 'mega-ls %s' % dst_dir
+        test_dir = 0
+
+        try:
+            subprocess.check_call(command, stdout=FNULL, stderr=subprocess.STDOUT, shell=True)
+        except:
+            test_dir = 1
+
+        if test_dir != 0:
+            flash('%s - destination dir not found' % config_acc_dst.name, 'error')
+            subprocess.call('mega-logout')
+            return redirect('/files/%s' % config.id)
+
+
+        command = "mega-import '%s' '%s'" % (remote_file.link,  dst_dir)
+        os.system(command)
+        #@TODO test ooutput Import file complete: dts_dir
+        time.sleep(5) # Give room to mega-import
+        subprocess.call('mega-logout')
+        #@TDO mark as not updated
+        
+        flash('%s - file %s imported' % (config_acc_dst.name, remote_file.filename ), 'success')
+
+        # Delete file in ori account (moveto thash?)
+        # Login in origen account
+        passwd = '\'' + config.passwd + '\''
+        os.system('mega-login %s %s' % (config.email, passwd))
+        
+
+        command = "mega-rm '%s'" % remote_file.path.lstrip('/Root')
+        os.system(command)
+        #@TODO test ooutput Import file complete: dts_dir
+        time.sleep(5) # Give room to mega-import
+        subprocess.call('mega-logout')
+        #@TDO mark as not updated
+        
+        flash('%s - file %s deleted from origen account' % (config.name, remote_file.filename ), 'success')
+
+
+
+
+#             # kill mega-cmd-server processes
+#             mega_server_pids = subprocess.Popen(['pgrep','mega-cmd-server'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+#             for mega_server_pid in mega_server_pids:
+#                 if mega_server_pid:
+#                     print mega_server_pid.rstrip()
+#                     os.system('kill %s' % mega_server_pid.rstrip())
+
+#         # Set State Hash to non updated
+#         remote_state_hash.state_hash = 'changed'
+#         remote_state_hash.is_update = False
+#         db.session.commit()
+#      
+#         flash('%s - is synced. You have to update the account' % config.name, 'success')
+#         flash('%s - you should update this account' % config.name, 'warning')
+#         return redirect('/home')
+        
+        
+        
+        
+        # Delete file in ori account
+        pass
+
+    return render_template('move.html', title = 'move', move_form = move_form )
+# 
+#     # Instanciate accountmega handler and delete
+#     accmega = AccountMega(acc.id, acc.name, acc.email, acc.passwd)
+#     accmega.rm(remote_file.path)
+# 
+#     # Set as not updated
+#     acc_state_hash = StateHash.query.filter_by(config_id= acc.id, file_type = 'remote').one()
+#     acc_state_hash.state_hash = 'changed'
+#     acc_state_hash.is_update = False
+#     db.session.commit()
+# 
+#     flash('%s - file %s has been delete from remote directory.' % (acc.name, unicode(remote_file.filename)), 'success')
+#     flash('%s - you should update this account' % acc.name, 'warning')
+#     return redirect('/files/%s' % acc.id)
 
 @app.route('/update/<id>', methods=['GET', 'POST'])
 @login_required
@@ -1168,13 +1283,17 @@ def update(id):
 @login_required
 def upload(id):
     upload_file_form = UploadFileForm()
-    config = Config.query.filter_by(id=id).first()
+    config = Config.query.filter_by(id=id).one()
     remote_state_hash = StateHash.query.filter_by(config_id=config.id, file_type = 'remote').one()
-    
+
     if request.method == 'GET':
         upload_file_form.remote_dir_dst.data = config.remote_dir
 
     if request.method == 'POST' and upload_file_form.validate_on_submit():
+            
+        #if current_user.get_task_in_progress('export_posts'):
+        #    flash('%s- An export task is currently in progress' % config.name, 'error')
+
         # check if the post request has the file part
         if 'file' not in request.files:
             flash('No file found', 'error')
@@ -1240,11 +1359,11 @@ def sync(id):
             remote_dir = '/'
         else:
             remote_dir = '/' + config.remote_dir.lstrip('/Root')
-        
+
         command = "mega-sync '%s' '%s'" % (config.local_dir, remote_dir)
         os.system(command)
         time.sleep(5) # Give room to mega-sync to create the proccess, it starts as synced.
-        
+
         while subprocess.check_output('mega-sync').splitlines()[1].split()[4] != 'Synced':
             time.sleep(5)
         else:
@@ -1274,7 +1393,7 @@ def sync(id):
 @login_required
 def search():
     search_form = SearchForm()
-    
+
     user_accounts = Config.query.filter_by(user_id = current_user.id) 
     user_accounts_list = [(i.id, i.name) for i in user_accounts]
     search_form.accounts.choices = user_accounts_list
