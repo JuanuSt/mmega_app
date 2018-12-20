@@ -15,7 +15,7 @@ from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from redis import Redis
 import rq
-from rq import get_current_job
+from rq import Worker, get_current_job
 
 # Define the WSGI application object
 app = Flask(__name__, instance_relative_config=True)
@@ -31,9 +31,11 @@ FNULL = open(os.devnull, 'w')
 # Define the database object
 db = SQLAlchemy(app)
 
-# Connect to rq server
-app.redis = Redis.from_url(app.config['REDIS_URL'])
-app.task_queue = rq.Queue('mmega-tasks', connection=app.redis)
+# Redis
+app.redis = Redis.from_url(app.config['REDIS_URL'])  # Connect to redis server
+app.task_queue = rq.Queue('mmega-tasks', connection=app.redis)  # Create a queue
+#app.worker = rq.Worker('mmega-task', connection=app.redis)
+#app.worker.work()
 
 
 ##############################################################################################
@@ -47,7 +49,7 @@ class User(UserMixin, db.Model):
     tasks = db.relationship('Task', backref='user', lazy='dynamic')
 
     def __repr__(self):
-        return '<User {}>'.format(self.user_name)    
+        return '<User {}>'.format(self.user_name)
 
     # Register methods
     def set_password(self, password):
@@ -58,7 +60,8 @@ class User(UserMixin, db.Model):
 
     # Redis methods
     def launch_task(self, name, description, *args, **kwargs):
-        rq_job = current_app.task_queue.enqueue('app.tasks.' + name, self.id, *args, **kwargs)
+        print args
+        rq_job = app.task_queue.enqueue('app.tasks.' + name, self.id, *args, **kwargs)
         task = Task(id=rq_job.get_id(), name=name, description=description, user=self)
         db.session.add(task)
         return task
@@ -141,7 +144,7 @@ class Task(db.Model):
 
     def get_rq_job(self):
         try:
-            rq_job = rq.job.Job.fetch(self.id, connection=current_app.redis)
+            rq_job = rq.job.Job.fetch(self.id, connection=app.redis)
         except (redis.exceptions.RedisError, rq.exceptions.NoSuchJobError):
             return None
         return rq_job
@@ -403,7 +406,7 @@ def get_disk_data(id):
         # Delete current account disk data
         DiskStats.query.filter_by(config_id=config.id).delete()
         db.session.rollback()
-        
+
         flash('%s - failed to update disk data' % name, 'error')
         return 1
     else:
@@ -420,7 +423,7 @@ def get_disk_data(id):
                 used = df_data_try[7])
         db.session.add(df_data)
         db.session.commit()
-        
+
         flash('%s - disk data updated' % df_data_try[1], 'success')
 
 # Just update disk data
@@ -452,9 +455,6 @@ def update_disk_data(id):
         if df_data_try[3] == current_disk_data.free_bytes:
             flash('%s - disk data are already updated' % name, 'info')
         else: 
-            # update row to disk data
-            #new_disk_data = DiskStats.query.filter_by(config_id=config.id).first()
-    
             current_disk_data.user_id = current_user.id
             current_disk_data.config_id = df_data_try[0]
             current_disk_data.name = df_data_try[1]
@@ -464,7 +464,7 @@ def update_disk_data(id):
             current_disk_data.total = df_data_try[5]
             current_disk_data.free = df_data_try[6]
             current_disk_data.used = df_data_try[7]
-    
+
             db.session.commit()
             flash('%s - disk data updated' % name, 'success')
 
@@ -501,13 +501,7 @@ def get_remote_files(id):
         # Fisrt run
         if not current_state:
             # Insert init hash
-            init_hash = StateHash(
-                            user_id = current_user.id,
-                            config_id = config.id,
-                            file_type = 'remote',
-                            state_hash = 'init',
-                            is_update = False
-                            )
+            init_hash = StateHash(user_id = current_user.id, config_id = config.id, file_type = 'remote', state_hash = 'init',is_update = False)
             db.session.add(init_hash)
             current_state = StateHash.query.filter_by(user_id = current_user.id, config_id = config.id, file_type = 'remote').first()
 
@@ -515,38 +509,37 @@ def get_remote_files(id):
         state_hash = md5.new(remote_files_try).hexdigest()
 
         if unicode(state_hash) != current_state.state_hash:
-
             # Delete current remote files
             db.session.commit()
-    
+
             # Update state hash (is_update after insert files)
             new_state_hash = StateHash.query.filter_by(config_id=config.id, file_type = 'remote').first()
             new_state_hash.user_id = current_user.id
             new_state_hash.config_id = config.id
             new_state_hash.file_type = 'remote'
             new_state_hash.state_hash = state_hash
-    
+
             # Extract info from megals output
             remote_files_try_raw = remote_files_try.splitlines()
-    
+
             for line in remote_files_try_raw:
                 file_data_raw = line.split(None, 7)
-    
+
                 if file_data_raw[3] == str(0) or file_data_raw[2] == str(1):
                     # file
                     if file_data_raw[3] == str(0):
                         is_dir = False
                         file_type = 'remote'
                         link = file_data_raw[0]
-    
+
                         if file_data_raw[4] == '-':
                             size_bytes = 0
                         else:
                             size_bytes = file_data_raw[4]
-    
+
                         mod_date = datetime.strptime(file_data_raw[5] + " " + file_data_raw[6], '%Y-%m-%d %H:%M:%S')
                         path = file_data_raw[7].decode('utf-8')
-    
+
                     # directory
                     elif file_data_raw[2] == str(1):
                         is_dir = True
@@ -555,7 +548,7 @@ def get_remote_files(id):
                         size_bytes = ""
                         mod_date = datetime.strptime(file_data_raw[4] + ' ' + file_data_raw[5], '%Y-%m-%d %H:%M:%S')
                         path = file_data_raw[6].decode('utf-8')
-    
+
                     else:
                         is_dir = True
                         file_type = 'error'
@@ -563,7 +556,7 @@ def get_remote_files(id):
                         size_bytes = ""
                         mod_date = ""
                         path = ""
-    
+
                     # Insert data into db
                     file_info  = Files(
                             user_id = current_user.id,
@@ -581,7 +574,7 @@ def get_remote_files(id):
 
             new_state_hash.is_update = True    
             db.session.commit()
-            
+
             flash('%s - remote files have been updated' % name, 'success')
         else:
             # Do not delete files
@@ -737,6 +730,14 @@ def update_file_stats(id):
 
     db.session.commit()
 
+# Kill mega-cmd-server processes
+def kill_mega_cmd_server():
+    mega_server_pids = subprocess.Popen(['pgrep','mega-cmd-server'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+    for mega_server_pid in mega_server_pids:
+        if mega_server_pid:
+            print mega_server_pid.rstrip()
+            os.system('kill %s' % mega_server_pid.rstrip())
+
 # Set task progress (Redis)
 def _set_task_progress(progress):
     job = get_current_job()
@@ -744,10 +745,44 @@ def _set_task_progress(progress):
         job.meta['progress'] = progress
         job.save_meta()
         task = Task.query.get(job.get_id())
-        task.user.add_notification('task_progress', {'task_id': job.get_id(),'progress': progress})
+        #task.user.add_notification('task_progress', {'task_id': job.get_id(),'progress': progress})
+        # Use flash
         if progress >= 100:
             task.complete = True
         db.session.commit()
+
+
+##############################################################################################
+# Tasks ######################################################################################
+##############################################################################################
+
+def task_update(config_id):
+    print "Starting task update"
+
+    get_remote_files(config_id)
+    get_local_files(config_id)
+    update_file_stats(config_id)
+    update_disk_data(config_id)
+
+    #flash('%s - is updated' % config.name, 'success')
+    #return redirect('/home')
+
+    print "Task update completed"
+
+def task_example(seconds):
+    print seconds
+    job = get_current_job()
+    print('Starting task')
+    for i in range(seconds):
+        job.meta['progress'] = 100.0 * i / seconds
+        job.save_meta()
+        print(i)
+        time.sleep(1)
+    job.meta['progress'] = 100
+    job.save_meta()
+    print('Task completed')
+    task_obj = Task.query.filter_by(id = job.get_id())
+    task_obj.complete = True
 
 ##############################################################################################
 # Routes #####################################################################################
@@ -810,7 +845,7 @@ def login():
             # is_safe_url should check if the url is safe for redirects.
             #if not is_safe_url(next):
             #    return abort(400)
-            
+
             return redirect(url_for('home'))
 
     return render_template('login_form.html', title='login', login_form = login_form)
@@ -821,11 +856,11 @@ def user_config():
     user_config_form = UserConfigForm()
 
     current_user_from_db = User.query.filter_by(id = current_user.id).first()
-    
+
     if request.method == 'GET':
         user_config_form.user_name.data = current_user_from_db.user_name
         user_config_form.user_email.data = current_user_from_db.user_email
-    
+
     if request.method == 'POST':
 
         if user_config_form.validate_on_submit():
@@ -839,11 +874,11 @@ def user_config():
                 if user_config_form.new_password.data and user_config_form.new_password2.data:
                     current_user_from_db.set_password(user_config_form.new_password.data)
                 db.session.commit()
-            
+
             flash('%s - changes done. Log in with new credentials' % user_config_form.user_name.data, 'success')
             return redirect(url_for('logout'))
         else:
-            flash(user_config_form.errors, 'error')
+            flash("%s - error %s'" % (user_config_form.user_name.data , user_config_form.errors), 'error')
 
     return render_template('user_config_form.html', title='user config', user_config_form=user_config_form)
 
@@ -869,13 +904,13 @@ def home():
     # Calcule updated accounts
     total_accounts_updated = 0
     user_accounts = Config.query.filter_by(user_id = current_user.id).all()
-    
+
     for account in user_accounts:
         try:
             account_file_stats = FileStats.query.filter_by(config_id=account.id).first()
         except:
             account_file_stats = False
-        
+
         if account_file_stats:
             if account_file_stats.local:
                 remote_state = db.session.query(StateHash.is_update).filter_by(config_id = account_file_stats.config_id, file_type = 'remote').scalar()
@@ -886,7 +921,7 @@ def home():
                 remote_state = db.session.query(StateHash.is_update).filter_by(config_id = account_file_stats.config_id, file_type = 'remote').scalar()
                 if remote_state:
                     total_accounts_updated = int(total_accounts_updated) + 1
-    
+
     # @TODO: Calcule synced accounts
     acc_synced = 0
 
@@ -972,10 +1007,10 @@ def add_account():
 
             if file and allowed_config_file(file.filename):
                 filename = secure_filename(upload_form.file.data.filename)
-                
+
                 # Create tmp dir
                 tmp_dir = tempfile.mkdtemp()
-                
+
                 upload_form.file.data.save(os.path.join(tmp_dir, filename))
 
                 # @TODO get files without headers
@@ -988,7 +1023,7 @@ def add_account():
 
                 # Delete tmp dir
                 shutil.rmtree(tmp_dir)
-                
+
                 # Insert data in db
                 for row in dataset:
                     new_account = Config(user_id = current_user.id, name = row[0], email = row[1], passwd = row[2], local_dir = row[3], remote_dir = row[4])
@@ -1000,7 +1035,7 @@ def add_account():
                 for new_acc in db.session.new:
                     # Get login parameters from db session
                     acc = Config.query.filter_by(name = new_acc.name).first()
-                    
+
                     if not acc:
                         flash("Error reading config file line",'error')
                         continue
@@ -1095,9 +1130,7 @@ def delete(id):
             Files.query.filter_by(config_id=current_config.id).delete()  # Delete files (remote, local, to_up, to_down)
             StateHash.query.filter_by(config_id=current_config.id).delete()  # Delete state hash (remote, local)
             FileStats.query.filter_by(config_id=current_config.id).delete()  # Delete file stats row
-
             db.session.commit()
-            
             flash('%s - has been deleted' % name, 'success')
             return redirect('/home')
 
@@ -1114,12 +1147,12 @@ def files(id):
     # Get files info
     remote_files = Files.query.filter_by(config_id=config.id, is_dir=False, file_type='remote').order_by(Files.filename.asc()).all()   
     local_files = Files.query.filter_by(config_id=config.id, is_dir=False, file_type='local' ).order_by(Files.filename.asc()).all()   
-    
+
     # Show files
     return render_template('files.html', title = 'files', config = config,
                            disk_stats = disk_stats, file_stats = file_stats,
                            remote_files = remote_files, local_files = local_files)
- 
+
 @app.route('/files_details/<id>', methods=['GET', 'POST'])
 @login_required
 def files_details(id):
@@ -1199,6 +1232,7 @@ def move_file(file_id):
         if test_dir != 0:
             flash('%s - destination dir %s not found' % (config_acc_dst.name, dst_dir), 'error')
             subprocess.call('mega-logout')
+            kill_mega_cmd_server()
             return redirect('/files/%s' % config.id)
 
         command = "mega-import '%s' '%s'" % (remote_file.link,  dst_dir)
@@ -1208,12 +1242,14 @@ def move_file(file_id):
         if err:
             flash("%s - error importing file '%s' - %s"  % (config_acc_dst.name, remote_file.filename, err), 'error')
             subprocess.call('mega-logout')
+            kill_mega_cmd_server()
             return redirect('/files/%s' % config.id)
         elif output.split(':')[0] != 'Import file complete':
             time.sleep(5) # wait
         else:
             # Log out destination account
             subprocess.call('mega-logout')
+            kill_mega_cmd_server()
 
             # Set as not updated
             acc_state_hash = StateHash.query.filter_by(config_id = config_acc_dst.id, file_type = 'remote').one()
@@ -1237,10 +1273,12 @@ def move_file(file_id):
             if err:
                 flash("%s - error deleting file '%s' - %s"  % (config.name, remote_file.filename, err), 'error')
                 subprocess.call('mega-logout')
+                kill_mega_cmd_server()
                 return redirect('/files/%s' % config.id)
             else:
                 # Log out sourceaccount
                 subprocess.call('mega-logout')
+                kill_mega_cmd_server()
 
                 # Set as not updated
                 acc_state_hash = StateHash.query.filter_by(config_id = config.id, file_type = 'remote').one()
@@ -1254,18 +1292,25 @@ def move_file(file_id):
 
     return render_template('move.html', title = 'move', move_form = move_form )
 
-@app.route('/update/<id>', methods=['GET', 'POST'])
+@app.route('/update/<id>', methods=['GET'])
 @login_required
 def update(id):
-    config = Config.query.filter_by(id=id).first()
-
-    get_remote_files(config.id)
-    get_local_files(config.id)
-    update_file_stats(config.id)
-    update_disk_data(config.id)
-
-    flash('%s - is updated' % config.name, 'success')
+    segundos = 30
+    if current_user.get_task_in_progress('task_example'):
+        flash('An export task is currently in progress')
+    else:
+        current_user.launch_task('task_example', ('Task example...'), segundos)
+        db.session.commit()
     return redirect('/home')
+#     config = Config.query.filter_by(id=id).first()
+# 
+#     get_remote_files(config.id)
+#     get_local_files(config.id)
+#     update_file_stats(config.id)
+#     update_disk_data(config.id)
+# 
+#     flash('%s - is updated' % config.name, 'success')
+#     return redirect('/home')
 
 @app.route('/upload/<id>', methods=['GET', 'POST'])
 @login_required
@@ -1356,19 +1401,13 @@ def sync(id):
             time.sleep(5)
         else:
             subprocess.call('mega-logout')
+            kill_mega_cmd_server()
 
-            # kill mega-cmd-server processes
-            mega_server_pids = subprocess.Popen(['pgrep','mega-cmd-server'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
-            for mega_server_pid in mega_server_pids:
-                if mega_server_pid:
-                    print mega_server_pid.rstrip()
-                    os.system('kill %s' % mega_server_pid.rstrip())
-
-        # Set State Hash to non updated
+        # Setas non updated
         remote_state_hash.state_hash = 'changed'
         remote_state_hash.is_update = False
         db.session.commit()
-     
+
         flash('%s - is synced. You have to update the account' % config.name, 'success')
         flash('%s - you should update this account' % config.name, 'warning')
         return redirect('/home')

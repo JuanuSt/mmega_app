@@ -12,4 +12,5 @@ mmega.db
 # Folders
 tests
 
-
+# Files
+*.pyc
