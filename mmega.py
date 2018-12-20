@@ -1172,7 +1172,7 @@ def move_file(file_id):
         move_form.file_to_move.data = remote_file.path
 
     if request.method == 'POST' and move_form.validate_on_submit():
-        # Get dst  params
+        # Get dst params
         config_acc_dst = Config.query.filter_by(id = move_form.acc_dst.data).one()
         dst_dir = move_form.remote_dir_dst.data
 
@@ -1181,6 +1181,7 @@ def move_file(file_id):
         passwd = '\'' + config_acc_dst.passwd + '\''
         os.system('mega-login %s %s' % (config_acc_dst.email, passwd))
 
+        # Adapt remote path to megacmd
         if dst_dir == '/Root':
             dst_dir = '/'
         else:
@@ -1196,75 +1197,62 @@ def move_file(file_id):
             test_dir = 1
 
         if test_dir != 0:
-            flash('%s - destination dir not found' % config_acc_dst.name, 'error')
+            flash('%s - destination dir %s not found' % (config_acc_dst.name, dst_dir), 'error')
             subprocess.call('mega-logout')
             return redirect('/files/%s' % config.id)
 
-
         command = "mega-import '%s' '%s'" % (remote_file.link,  dst_dir)
-        os.system(command)
-        #@TODO test ooutput Import file complete: dts_dir
-        time.sleep(5) # Give room to mega-import
-        subprocess.call('mega-logout')
-        #@TDO mark as not updated
-        
-        flash('%s - file %s imported' % (config_acc_dst.name, remote_file.filename ), 'success')
+        result = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
+        output, err = result.communicate()
 
-        # Delete file in ori account (moveto thash?)
-        # Login in origen account
-        passwd = '\'' + config.passwd + '\''
-        os.system('mega-login %s %s' % (config.email, passwd))
-        
+        if err:
+            flash("%s - error importing file '%s' - %s"  % (config_acc_dst.name, remote_file.filename, err), 'error')
+            subprocess.call('mega-logout')
+            return redirect('/files/%s' % config.id)
+        elif output.split(':')[0] != 'Import file complete':
+            time.sleep(5) # wait
+        else:
+            # Log out destination account
+            subprocess.call('mega-logout')
 
-        command = "mega-rm '%s'" % remote_file.path.lstrip('/Root')
-        os.system(command)
-        #@TODO test ooutput Import file complete: dts_dir
-        time.sleep(5) # Give room to mega-import
-        subprocess.call('mega-logout')
-        #@TDO mark as not updated
-        
-        flash('%s - file %s deleted from origen account' % (config.name, remote_file.filename ), 'success')
+            # Set as not updated
+            acc_state_hash = StateHash.query.filter_by(config_id = config_acc_dst.id, file_type = 'remote').one()
+            acc_state_hash.state_hash = 'changed'
+            acc_state_hash.is_update = False
+            db.session.commit()
 
+            flash("%s - '%s'" % (config_acc_dst.name, output ), 'success')
+            flash('%s - you should update this account' % config_acc_dst.name, 'warning')
 
+            # Delete file in the source account (or just move to trash?)
+            # Login in source account
+            passwd = '\'' + config.passwd + '\''
+            os.system('mega-login %s %s' % (config.email, passwd))
 
+            # Delete
+            command = "mega-rm '%s'" % remote_file.path.lstrip('/Root')
+            result = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
+            output, err = result.communicate()
 
-#             # kill mega-cmd-server processes
-#             mega_server_pids = subprocess.Popen(['pgrep','mega-cmd-server'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
-#             for mega_server_pid in mega_server_pids:
-#                 if mega_server_pid:
-#                     print mega_server_pid.rstrip()
-#                     os.system('kill %s' % mega_server_pid.rstrip())
+            if err:
+                flash("%s - error deleting file '%s' - %s"  % (config.name, remote_file.filename, err), 'error')
+                subprocess.call('mega-logout')
+                return redirect('/files/%s' % config.id)
+            else:
+                # Log out sourceaccount
+                subprocess.call('mega-logout')
 
-#         # Set State Hash to non updated
-#         remote_state_hash.state_hash = 'changed'
-#         remote_state_hash.is_update = False
-#         db.session.commit()
-#      
-#         flash('%s - is synced. You have to update the account' % config.name, 'success')
-#         flash('%s - you should update this account' % config.name, 'warning')
-#         return redirect('/home')
-        
-        
-        
-        
-        # Delete file in ori account
-        pass
+                # Set as not updated
+                acc_state_hash = StateHash.query.filter_by(config_id = config.id, file_type = 'remote').one()
+                acc_state_hash.state_hash = 'changed'
+                acc_state_hash.is_update = False
+                db.session.commit()
+
+                flash('%s - file %s deleted' % (config.name, remote_file.filename ), 'success')
+                flash('%s - you should update this account' % config.name, 'warning')
+                return redirect('/files/%s' % config.id)
 
     return render_template('move.html', title = 'move', move_form = move_form )
-# 
-#     # Instanciate accountmega handler and delete
-#     accmega = AccountMega(acc.id, acc.name, acc.email, acc.passwd)
-#     accmega.rm(remote_file.path)
-# 
-#     # Set as not updated
-#     acc_state_hash = StateHash.query.filter_by(config_id= acc.id, file_type = 'remote').one()
-#     acc_state_hash.state_hash = 'changed'
-#     acc_state_hash.is_update = False
-#     db.session.commit()
-# 
-#     flash('%s - file %s has been delete from remote directory.' % (acc.name, unicode(remote_file.filename)), 'success')
-#     flash('%s - you should update this account' % acc.name, 'warning')
-#     return redirect('/files/%s' % acc.id)
 
 @app.route('/update/<id>', methods=['GET', 'POST'])
 @login_required
