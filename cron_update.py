@@ -32,9 +32,12 @@ class User(Base):
 class Config(Base):
     __table__ = Base.metadata.tables['config']
 
+class Task(Base):
+    __table__ = Base.metadata.tables['task']
+
 class DiskStats(Base):
     __table__ = Base.metadata.tables['disk_stats']
-    
+
 class Files(Base):
     __table__ = Base.metadata.tables['files']
 
@@ -187,7 +190,7 @@ if __name__ == '__main__':
             current_local_state_hash = 'init'
         current_remote_state_hash = db_session.query(StateHash.state_hash).filter_by(config_id = account.id, file_type = 'remote').one()
 
-        # Create mega handler        
+        # Create mega handler
         accmega = AccountMega(account.id, account.name, account.email, account.passwd)
 
         # Get disk stats
@@ -203,7 +206,7 @@ if __name__ == '__main__':
                 # Get local hash
                 if account.local_dir:
                     new_local_hash = create_local_hash(account.local_dir)
-                    
+
                     if new_local_hash and new_local_hash != 1:
                         if unicode(new_local_hash) != current_local_state_hash.state_hash:
                             #if update_automatically:
@@ -243,7 +246,7 @@ if __name__ == '__main__':
                                     #if update_automatically:
                                     # else Set account remote as not updated
                                     account_state_hash = db_session.query(StateHash).filter_by(config_id = account.id, file_type = 'remote').one()
-                                    account_state_hash.state_hash = 'changed' 
+                                    account_state_hash.state_hash = 'changed'
                                     account_state_hash.is_update = False
                                     print "%s - set to non updated by remote hash" % account.name
                                     db_session.commit()

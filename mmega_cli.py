@@ -1,5 +1,4 @@
 #!/home/kass/workspaces/mmega_app/mmega_app/venv/bin/python2.7
-###/usr/bin/env python
 
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -27,6 +26,9 @@ class User(Base):
 
 class Config(Base):
     __table__ = Base.metadata.tables['config']
+
+class Task(Base):
+    __table__ = Base.metadata.tables['task']
 
 class DiskStats(Base):
     __table__ = Base.metadata.tables['disk_stats']
@@ -107,21 +109,21 @@ if __name__ == '__main__':
                 disk = db_session.query(DiskStats).filter_by(user_id = user.id, config_id = acc.id).first()
                 percent_free = 100 * (float(disk.free_bytes) / float(disk.total_bytes))
                 p_free = '{0:.2f}'.format(percent_free)
-                
+
                 # Get number of files
                 files = db_session.query(FileStats).filter_by(user_id = user.id, config_id = acc.id).first()
-                
+
                 # Is update
                 state_local = db_session.query(StateHash).filter_by(user_id = user.id, config_id = acc.id, file_type = 'local').first()
                 state_remote = db_session.query(StateHash).filter_by(user_id = user.id, config_id = acc.id, file_type = 'remote').first()
-                
+
                 if state_local.is_update and state_remote.is_update:
                     updated = 'yes'
                 else:
                     updated = 'no'
-                
+
                 table_summary.add_row([owner, acc.name, disk.total, disk.used, p_free, files.local, files.remote, updated])
-        
+
         print table_summary
 
     # Show files
@@ -135,14 +137,14 @@ if __name__ == '__main__':
         table_files.align['location'] = 'l'
         table_files.align['link'] = 'l'
         table_files.align[' mod. date'] = 'l'
-        
+
         # Get accounts
         acc_names = []
         accounts = db_session.query(Config).all()
         for acc in accounts:
             acc_names.append(acc.name)
 
-        # Show files        
+        # Show files
         if len(sys.argv) == 3 or len(sys.argv) == 4 or len(sys.argv) == 5 and sys.argv[2] in acc_names:
             acc = db_session.query(Config).filter_by(name = sys.argv[2]).first()
             usr = db_session.query(User).filter_by(id = acc.user_id).first()
@@ -165,7 +167,7 @@ if __name__ == '__main__':
                 else:
                     print(table_files.get_string(fields=['filename', 'size', 'mod. data']))
             else:
-                files = db_session.query(Files).filter_by(is_dir = False, config_id = acc.id, user_id = usr.id).all()            
+                files = db_session.query(Files).filter_by(is_dir = False, config_id = acc.id, user_id = usr.id).all()
                 for f in files:
                     table_files.add_row([usr.user_name, acc.name, f.path, f.filename, f.size, f.file_type, f.link, f.mod_date])
                 table_files.sortby = 'filename'
@@ -179,6 +181,21 @@ if __name__ == '__main__':
                 table_files.add_row([owner.user_name, acc.name, f.file_type, f.path, f.filename, f.size, f.link, f.mod_date])
             table_files.sortby = 'owner'
             print table_files
-        
-            
-            
+
+    # Show tasks
+    if sys.argv[1] == 'task':
+        tasks = db_session.query(Task).all()
+
+        table_task = PrettyTable(['owner', 'name', 'description', 'complete', 'id'])
+        table_task.align['owner'] = 'l'
+        table_task.align['name'] = 'l'
+        table_task.align['description'] = 'l'
+        table_task.align['complete'] = 'l'
+        table_task.align['id'] = 'l'
+
+        for task in tasks:
+            user = db_session.query(User).filter_by(id = task.user_id).one()
+            table_task.add_row([user.name, task.name, task.description, task.complete, task.id])
+
+        print table_task
+

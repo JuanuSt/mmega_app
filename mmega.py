@@ -61,7 +61,7 @@ class User(UserMixin, db.Model):
     # Redis methods
     def launch_task(self, name, description, *args, **kwargs):
         print args
-        rq_job = app.task_queue.enqueue('app.tasks.' + name, self.id, *args, **kwargs)
+        rq_job = app.task_queue.enqueue('tasks.' + name, self.id, *args, **kwargs)
         task = Task(id=rq_job.get_id(), name=name, description=description, user=self)
         db.session.add(task)
         return task
@@ -1295,22 +1295,22 @@ def move_file(file_id):
 @app.route('/update/<id>', methods=['GET'])
 @login_required
 def update(id):
-    segundos = 30
-    if current_user.get_task_in_progress('task_example'):
-        flash('An export task is currently in progress')
-    else:
-        current_user.launch_task('task_example', ('Task example...'), segundos)
-        db.session.commit()
-    return redirect('/home')
-#     config = Config.query.filter_by(id=id).first()
+#    segundos = 30
+#    if current_user.get_task_in_progress('task_example'):
+#        flash('An export task is currently in progress')
+#    else:
+#        current_user.launch_task('task_example', ('Task example...'), segundos)
+#        db.session.commit()
+#    return redirect('/home')
+     config = Config.query.filter_by(id=id).first()
 # 
-#     get_remote_files(config.id)
-#     get_local_files(config.id)
-#     update_file_stats(config.id)
-#     update_disk_data(config.id)
+     get_remote_files(config.id)
+     get_local_files(config.id)
+     update_file_stats(config.id)
+     update_disk_data(config.id)
 # 
-#     flash('%s - is updated' % config.name, 'success')
-#     return redirect('/home')
+     flash('%s - is updated' % config.name, 'success')
+     return redirect('/home')
 
 @app.route('/upload/<id>', methods=['GET', 'POST'])
 @login_required
