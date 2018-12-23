@@ -37,11 +37,8 @@ function handleMenuAction(evt, file_id) {
         window.location.href=('/delete_remote_file/' + file_id);
     if (evt == 'move')
         window.location.href=('/move/' + file_id);
+    if (evt == 'webdav')
+        window.location.href=('/webdav/' + file_id);
     else
-        alert("Action required else: " + file_id );
+        alert("unknown action");
 }
-
-
-
-
-

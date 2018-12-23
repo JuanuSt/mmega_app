@@ -52,6 +52,7 @@
                             <option value="/home">{{ current_user.user_name }} &#160; &#x25BE;</option>
                             <option value="/add_account">Add account</option>
                             <option value="/user_config_form">User config</option>
+                            <option value="/webdav/results">Served files</option>
                             <option value="/automation">Automation</option>
                             <option value="/logout">Logout</option>
                         </select>
@@ -116,6 +117,10 @@
         {% block move %}
         {% endblock %}
 
+        <!-- Block streaming -->
+        {% block streaming %}
+        {% endblock %}
+
         <!-- Block upload -->
         {% block upload %}
         {% endblock %}
@@ -123,7 +128,7 @@
         <!-- Block search -->
         {% block search %}
         {% endblock %}
-        
+
         <!-- Block automation -->
         {% block automation %}
         {% endblock %}
