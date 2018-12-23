@@ -16,6 +16,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from redis import Redis
 import rq
 from rq import Worker, get_current_job
+from threading import Thread
 
 # Define the WSGI application object
 app = Flask(__name__, instance_relative_config=True)
@@ -407,12 +408,12 @@ def get_disk_data(id):
         DiskStats.query.filter_by(config_id=config.id).delete()
         db.session.rollback()
 
-        flash('%s - failed to update disk data' % name, 'error')
+        #flash('%s - failed to update disk data' % name, 'error')
         return 1
     else:
         # Add row to disk data
         df_data = DiskStats(
-                user_id = current_user.id,
+                user_id = config.user_id,
                 config_id = df_data_try[0],
                 name = df_data_try[1], 
                 total_bytes = df_data_try[2], 
@@ -424,7 +425,7 @@ def get_disk_data(id):
         db.session.add(df_data)
         db.session.commit()
 
-        flash('%s - disk data updated' % df_data_try[1], 'success')
+        #flash('%s - disk data updated' % df_data_try[1], 'success')
 
 # Just update disk data
 def update_disk_data(id):
@@ -446,16 +447,17 @@ def update_disk_data(id):
         # Delete current account files
         DiskStats.query.filter_by(config_id=config.id).delete()
         db.session.rollback()
-        flash('%s - update disk data failed' % name, 'error')
+        #flash('%s - update disk data failed' % name, 'error')
         return 1
     else:
         # Test changes
         current_disk_data = DiskStats.query.filter_by(config_id=config.id).first()
 
         if df_data_try[3] == current_disk_data.free_bytes:
-            flash('%s - disk data are already updated' % name, 'info')
+            pass
+            #flash('%s - disk data are already updated' % name, 'info')
         else: 
-            current_disk_data.user_id = current_user.id
+            current_disk_data.user_id = config.user_id
             current_disk_data.config_id = df_data_try[0]
             current_disk_data.name = df_data_try[1]
             current_disk_data.total_bytes = df_data_try[2]
@@ -466,7 +468,7 @@ def update_disk_data(id):
             current_disk_data.used = df_data_try[7]
 
             db.session.commit()
-            flash('%s - disk data updated' % name, 'success')
+            #flash('%s - disk data updated' % name, 'success')
 
 # Insert remote file. Long time exec. 
 def get_remote_files(id):
@@ -492,18 +494,18 @@ def get_remote_files(id):
         # Do not delete files
         db.session.rollback()
 
-        flash('Error getting remote files for account %s' % (name), 'error')
+        #flash('Error getting remote files for account %s' % (name), 'error')
         return 1
     else:
         # Get state hash
-        current_state = StateHash.query.filter_by(user_id = current_user.id, config_id = config.id, file_type = 'remote').first()
+        current_state = StateHash.query.filter_by(user_id = config.user_id, config_id = config.id, file_type = 'remote').first()
 
         # Fisrt run
         if not current_state:
             # Insert init hash
-            init_hash = StateHash(user_id = current_user.id, config_id = config.id, file_type = 'remote', state_hash = 'init',is_update = False)
+            init_hash = StateHash(user_id = config.user_id, config_id = config.id, file_type = 'remote', state_hash = 'init',is_update = False)
             db.session.add(init_hash)
-            current_state = StateHash.query.filter_by(user_id = current_user.id, config_id = config.id, file_type = 'remote').first()
+            current_state = StateHash.query.filter_by(user_id = config.user_id, config_id = config.id, file_type = 'remote').first()
 
         # Create hash
         state_hash = md5.new(remote_files_try).hexdigest()
@@ -514,7 +516,7 @@ def get_remote_files(id):
 
             # Update state hash (is_update after insert files)
             new_state_hash = StateHash.query.filter_by(config_id=config.id, file_type = 'remote').first()
-            new_state_hash.user_id = current_user.id
+            new_state_hash.user_id = config.user_id
             new_state_hash.config_id = config.id
             new_state_hash.file_type = 'remote'
             new_state_hash.state_hash = state_hash
@@ -559,7 +561,7 @@ def get_remote_files(id):
 
                     # Insert data into db
                     file_info  = Files(
-                            user_id = current_user.id,
+                            user_id = config.user_id,
                             config_id = config.id,
                             is_dir = is_dir,
                             file_type = file_type,
@@ -575,11 +577,11 @@ def get_remote_files(id):
             new_state_hash.is_update = True    
             db.session.commit()
 
-            flash('%s - remote files have been updated' % name, 'success')
+            #flash('%s - remote files have been updated' % name, 'success')
         else:
             # Do not delete files
             db.session.rollback()
-            flash('%s - remote files are already updated' % name, 'info')
+            #flash('%s - remote files are already updated' % name, 'info')
 
 # Insert local files
 def get_local_files(id):
@@ -604,7 +606,7 @@ def get_local_files(id):
         # Do not delete files
         db.session.rollback()
 
-        flash("%s - local directory %s is not readable" % (name, local_dir), 'error')
+        #flash("%s - local directory %s is not readable" % (name, local_dir), 'error')
         return 1
     else:
         # Get list of files (directories are not saved)
@@ -629,20 +631,20 @@ def get_local_files(id):
         tmp.close()
 
         # Get state hash
-        current_state = StateHash.query.filter_by(user_id = current_user.id, config_id = config.id, file_type = 'local').first()
+        current_state = StateHash.query.filter_by(user_id = config.user_id, config_id = config.id, file_type = 'local').first()
 
         # Fisrt run
         if not current_state:
             # Insert init hash
             init_hash = StateHash(
-                            user_id = current_user.id,
+                            user_id = config.user_id,
                             config_id = config.id,
                             file_type = 'local',
                             state_hash = 'init',
                             is_update = False
                             )
             db.session.add(init_hash)
-            current_state = StateHash.query.filter_by(user_id = current_user.id, config_id = config.id, file_type = 'local').first()
+            current_state = StateHash.query.filter_by(user_id = config.user_id, config_id = config.id, file_type = 'local').first()
 
         if unicode(state_hash) != current_state.state_hash:
             # Delete current local files
@@ -650,7 +652,7 @@ def get_local_files(id):
     
             # Update state hash
             new_state_hash = StateHash.query.filter_by(config_id=config.id, file_type = 'local').first()
-            new_state_hash.user_id = current_user.id
+            new_state_hash.user_id = config.user_id
             new_state_hash.config_id = config.id
             new_state_hash.file_type = 'local'
             new_state_hash.state_hash = state_hash
@@ -659,7 +661,7 @@ def get_local_files(id):
             for line in local_files_info:
                 if line[1] == '1':  # dir, not done
                     file_info  = Files(
-                            user_id = current_user.id,
+                            user_id = config.user_id,
                             config_id = config.id,
                             is_dir = 1,
                             file_type = 'local',
@@ -672,7 +674,7 @@ def get_local_files(id):
                     db.session.add(file_info)
                 elif line[1] == '0':  # file
                     file_info  = Files(
-                            user_id = current_user.id,
+                            user_id = config.user_id,
                             config_id = config.id,
                             is_dir = 0,
                             file_type = 'local',
@@ -688,11 +690,11 @@ def get_local_files(id):
             tmp.close()
             new_state_hash.is_update = True
             db.session.commit()
-            flash('%s - local files have been updated' % name, 'success')
+            #flash('%s - local files have been updated' % name, 'success')
         else:
             # Do not delete files
             db.session.rollback()
-            flash('%s - local files are already updated' % name, 'info')
+            #flash('%s - local files are already updated' % name, 'info')
 
 def update_file_stats(id):
     # Get config parameters from db or session
@@ -712,7 +714,7 @@ def update_file_stats(id):
     if FileStats.query.filter_by(config_id=config.id).first():
         # Update
         new_file_stats = FileStats.query.filter_by(config_id=config.id).first()
-        new_file_stats.user_id = current_user.id
+        new_file_stats.user_id = config.user_id
         new_file_stats.config_id = config.id
         new_file_stats.name = name
         new_file_stats.local = num_local_files or None
@@ -722,7 +724,7 @@ def update_file_stats(id):
 
     else:
         # Add
-        files_stats_info = FileStats(user_id = current_user.id, config_id = config.id,name = name,
+        files_stats_info = FileStats(user_id = config.user_id, config_id = config.id,name = name,
                             local = num_local_files or None, remote = num_remote_files or None,
                             to_up = num_to_up_files or None,to_down = num_to_up_files or None
                             )
@@ -756,18 +758,20 @@ def _set_task_progress(progress):
 # Tasks ######################################################################################
 ##############################################################################################
 
-def task_update(config_id):
-    print "Starting task update"
-
-    get_remote_files(config_id)
-    get_local_files(config_id)
-    update_file_stats(config_id)
-    update_disk_data(config_id)
-
-    #flash('%s - is updated' % config.name, 'success')
-    #return redirect('/home')
-
-    print "Task update completed"
+def task_update(app, config_id):
+    with app.app_context():
+        print "Starting task update"
+    
+        get_remote_files(config_id)
+        get_local_files(config_id)
+        update_file_stats(config_id)
+        update_disk_data(config_id)
+    
+        #name = "tst"
+        #flash('%s - is updated' % name, 'success')
+        #return redirect('/home')
+    
+        print "Task update completed"
 
 def task_example(seconds):
     print seconds
@@ -1295,6 +1299,9 @@ def move_file(file_id):
 @app.route('/update/<id>', methods=['GET'])
 @login_required
 def update(id):
+    config = Config.query.filter_by(id=id).first()
+     
+    Thread(target=task_update, args=(app, config.id)).start()
 #    segundos = 30
 #    if current_user.get_task_in_progress('task_example'):
 #        flash('An export task is currently in progress')
@@ -1302,15 +1309,15 @@ def update(id):
 #        current_user.launch_task('task_example', ('Task example...'), segundos)
 #        db.session.commit()
 #    return redirect('/home')
-     config = Config.query.filter_by(id=id).first()
-# 
-     get_remote_files(config.id)
-     get_local_files(config.id)
-     update_file_stats(config.id)
-     update_disk_data(config.id)
-# 
-     flash('%s - is updated' % config.name, 'success')
-     return redirect('/home')
+#     config = Config.query.filter_by(id=id).first()
+#  
+#     get_remote_files(config.id)
+#     get_local_files(config.id)
+#     update_file_stats(config.id)
+#     update_disk_data(config.id)
+
+    flash('%s - Async update set' % config.name, 'success')
+    return redirect('/home')
 
 @app.route('/upload/<id>', methods=['GET', 'POST'])
 @login_required
@@ -1553,4 +1560,6 @@ def automation():
 
 # Start
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, threaded=True)
+    app.app_context().push()
+    
