@@ -31,6 +31,9 @@ app.config.from_pyfile('config.py') # Load the configuration from the instance f
 CONFIG_ALLOWED_EXTENSIONS = ['txt', 'csv']
 FNULL = open(os.devnull, 'w')
 
+reload(sys)
+sys.setdefaultencoding('utf8')
+
 # Define the database object
 db = SQLAlchemy(app)
 
@@ -738,13 +741,30 @@ def update_file_stats(id):
 
     db.session.commit()
 
-# Kill mega-cmd-server processes
+# Kill mega-cmd-server processes (sessions remain open)
 def kill_mega_cmd_server():
     mega_server_pids = subprocess.Popen(['pgrep','mega-cmd-server'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
     for mega_server_pid in mega_server_pids:
         if mega_server_pid:
-            print mega_server_pid.rstrip()
             os.system('kill %s' % mega_server_pid.rstrip())
+
+# Kill sessions (one account)
+def kill_sessions(config_id):
+    # Get account params
+    acc = Config.query.filter_by(id = config_id).one()
+
+    # Log in 
+    passwd = '\'' + acc.passwd + '\''
+    command = 'mega-login %s %s' % (acc.email, passwd)
+    os.system(command)
+
+    # Kill all sessions
+    command = 'mega-killsession -a'
+    os.system(command)
+
+    # Log out
+    command = 'mega-logout'
+    os.system(command)
 
 def get_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -861,13 +881,13 @@ def login():
 
             login_user(user, remember=login_form.remember_me.data)
 
-            flash('Logged in successfully as {}'.format(login_form.username.data), 'success')
+            # Init mega-cmd-server
+            accs = Config.query.all()
+            if accs:
+                for acc in accs:
+                    kill_sessions(acc.id)
 
-            #@TODO: avoid insecure redirect
-            #next = request.args.get('next')
-            # is_safe_url should check if the url is safe for redirects.
-            #if not is_safe_url(next):
-            #    return abort(400)
+            flash('Logged in successfully as {}'.format(login_form.username.data), 'success')
 
             return redirect(url_for('home'))
 
@@ -908,7 +928,11 @@ def user_config():
 @app.route('/logout')
 @login_required
 def logout():
-    os.system('mega-logout')
+    # Stop mega-cmd-server
+    accs = Config.query.all()
+    if accs:
+        for acc in accs:
+            kill_sessions(acc.id)
     kill_mega_cmd_server()
     logout_user()
     return redirect(url_for('login'))
@@ -1203,7 +1227,7 @@ def delete_remote_file(file_id):
 
     # Instanciate accountmega handler and delete
     accmega = AccountMega(acc.id, acc.name, acc.email, acc.passwd)
-    accmega.rm(remote_file.path)
+    accmega.rm(remote_file.path.encode('utf-8'))
 
     # Set as not updated
     acc_state_hash = StateHash.query.filter_by(config_id= acc.id, file_type = 'remote').one()
@@ -1234,8 +1258,8 @@ def move_file(file_id):
         config_acc_dst = Config.query.filter_by(id = move_form.acc_dst.data).one()
         dst_dir = move_form.remote_dir_dst.data
 
-        # Logout using megacmd
-        subprocess.call('mega-logout')
+        # Log out/in using megacmd
+        os.system('mega-logout')
         passwd = '\'' + config_acc_dst.passwd + '\''
         os.system('mega-login %s %s' % (config_acc_dst.email, passwd))
 
@@ -1256,7 +1280,7 @@ def move_file(file_id):
 
         if test_dir != 0:
             flash('%s - destination dir %s not found' % (config_acc_dst.name, dst_dir), 'error')
-            subprocess.call('mega-logout')
+            kill_sessions(config_acc_dst.id)
             kill_mega_cmd_server()
             return redirect('/files/%s' % config.id)
 
@@ -1267,13 +1291,14 @@ def move_file(file_id):
         if err:
             flash("%s - error importing file '%s' - %s"  % (config_acc_dst.name, remote_file.filename, err), 'error')
             subprocess.call('mega-logout')
+            kill_sessions(config_acc_dst.id)
             kill_mega_cmd_server()
             return redirect('/files/%s' % config.id)
         elif output.split(':')[0] != 'Import file complete':
             time.sleep(5) # wait
         else:
             # Log out destination account
-            subprocess.call('mega-logout')
+            kill_sessions(config_acc_dst.id)
             kill_mega_cmd_server()
 
             # Set as not updated
@@ -1297,12 +1322,13 @@ def move_file(file_id):
 
             if err:
                 flash("%s - error deleting file '%s' - %s"  % (config.name, remote_file.filename, err), 'error')
-                subprocess.call('mega-logout')
+                kill_sessions(config.id)
                 kill_mega_cmd_server()
                 return redirect('/files/%s' % config.id)
             else:
                 # Log out sourceaccount
-                subprocess.call('mega-logout')
+                kill_sessions(config.id)
+                os.system('mega-logout')
                 kill_mega_cmd_server()
 
                 # Set as not updated
@@ -1321,17 +1347,21 @@ def move_file(file_id):
 @app.route('/webdav/<file_id>',methods=['GET'])
 @login_required
 def webdav_file(file_id):
-    webdav_form = WebdavForm()
 
     if file_id == 'results':
-        return render_template('webdav.html', title = 'webdav', webdav_form = webdav_form )
+        return redirect('/webdav/results')
 
-    remote_file = Files.query.filter_by(id = file_id).one() # Get file info
+     # Get file info
+    remote_file = Files.query.filter_by(id = file_id).one()
+    if not remote_file:
+        flash('file not found. id %s' % file_id,'error')
+        return redirect('/home')
+
     config = Config.query.filter_by(id = remote_file.config_id).one()
 
     if remote_file.file_type == 'local':
-        flash('%s - local files %s cannot be streamed' % (config.name, remote_file.filename), 'error')
-        return redirect('/webdav/results')
+        flash('%s - local files %s cannot be streamed' % (config.name, remote_file.filename.encode('utf-8')), 'error')
+        return redirect('/home')
 
     if request.method == 'GET':
         # Test logged account
@@ -1339,21 +1369,70 @@ def webdav_file(file_id):
         result = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
         output, err = result.communicate()
 
-        if 'Not' in output.split():
-            # loggin with megacmd
-            passwd = '\'' + config.passwd + '\''
-            command = 'mega-login %s %s' % (config.email, passwd)
-        else:
-            logged_email = output.split(':')[1].split()[0]
-            # Test if is new file belong to the same account
-            if config.email == unicode(logged_email):
-                # Get already streamed files of this account
+        output_lines = output.splitlines()
+        for line in output_lines:
+            words = line.split()
+            if 'Initiating' in words:
+                pass
+            elif 'Not' in words:
+                # loggin with megacmd
+                passwd = '\'' + config.passwd + '\''
+                command = 'mega-login %s %s' % (config.email, passwd)
+                os.system(command)
+            else:
+                logged_email = output.split(':')[1].split()[0]
+                # Test if is new file belong to the same account
+                if config.email != unicode(logged_email):
+                    logged_acc = db.session.query(Config).filter_by(email = logged_email).one()
+                    #kill_sessions(config.id)
+                    flash('%s - already serving files for account %s. Remove all served files and try again.' % (config.name, logged_acc.name ), 'error')
+                    return redirect('/webdav/results')
+                else:
+                    # Serve file
+                    remote_file_path = '/' + remote_file.path.lstrip('/Root')  # Adapt remote path to megacmd
+                    command = "mega-webdav '%s' --port=5001 --public" % remote_file_path
+                    os.system(command)
+                    time.sleep(5)
+                    flash("%s - serving via webdav - '%s'" % (config.name, remote_file.filename),'success')
+                    return redirect('/webdav/results')
+    return redirect('/webdav/results')
+
+@app.route('/webdav/results',methods=['GET', 'POST'])
+@login_required
+def webdav_results():
+    webdav_form = WebdavForm()
+    user = User.query.filter_by(id = current_user.id).one()
+    accs = Config.query.filter_by(user_id = current_user.id).all()
+    logged_acc = False
+    num_served_files = 0
+    webdav_output = False
+
+    if request.method == 'GET':
+        # Test logged account
+        command = 'mega-whoami'
+        result = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
+        output, err = result.communicate()
+
+        accs_list = []
+        for acc in accs:
+            accs_list.append(acc.email)
+
+        output_lines = output.splitlines()
+        for line in output_lines:
+            words = line.split()
+            if 'Initiating' in words:
+                pass
+            elif 'Not' in words:
+                served_files = False
+                flash('%s - No logged in any account' % user.user_name, 'warning')
+            else:
+                logged_email = output.split(':')[1].split()[0]
+                logged_acc = db.session.query(Config).filter_by(email = logged_email).one()
                 command = 'mega-webdav'
+                reload(sys)
+                sys.setdefaultencoding('utf8')
                 result = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
                 webdav_output, err = result.communicate()
-            else:
-                logged_acc = db.session.query(Config).filter_by(email = logged_email).one()
-                flash('%s - already serving files for account %s. Remove all served files and try again.' % (config.name, logged_acc.name ), 'error')
 
         if webdav_output:
             if webdav_output == 'Webdav server might not running. Add a new location to serve.\n':
@@ -1363,69 +1442,23 @@ def webdav_file(file_id):
                 webdav_lines = webdav_output.splitlines()[1:]
 
                 served_files = []
+                num_served_files = 0
                 for line in webdav_lines:
+                    num_served_files += 1
                     filepath_served = line.split(':')[0]
+                    filename = os.path.basename(filepath_served)
+                    #id = db.sesion.get()
                     webdav_link = line.split()[-1]
                     raw_link = urlparse(webdav_link)
-                    print raw_link.netloc
                     webdav_local_link = raw_link.scheme + '://' + local_ip + ':' + str(raw_link.port) + raw_link.path
-                    served_files.append((filepath_served, webdav_local_link))
+                    served_files.append((filename, webdav_local_link))
 
     if request.method == 'POST' and webdav_form.validate_on_submit():
 
         # Test if is the same account
         print "Testing if same account"
-#         subprocess.call('mega-logout')
-#         passwd = '\'' + config_acc_dst.passwd + '\''
-#         os.system('mega-login %s %s' % (config_acc_dst.email, passwd))
 
-        # Adapt remote path to megacmd
-#         if dst_dir == '/Root':
-#             dst_dir = '/'
-#         else:
-#             dst_dir = '/' + dst_dir.lstrip('/Root')
-
-        # Test if remote dst dir exists before import
-#         command = 'mega-ls %s' % dst_dir
-#         test_dir = 0
-# 
-#         try:
-#             subprocess.check_call(command, stdout=FNULL, stderr=subprocess.STDOUT, shell=True)
-#         except:
-#             test_dir = 1
-# 
-#         if test_dir != 0:
-#             flash('%s - destination dir %s not found' % (config_acc_dst.name, dst_dir), 'error')
-#             subprocess.call('mega-logout')
-#             kill_mega_cmd_server()
-#             return redirect('/files/%s' % config.id)
-# 
-#         command = "mega-import '%s' '%s'" % (remote_file.link,  dst_dir)
-#         result = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
-#         output, err = result.communicate()
-# 
-#         if err:
-#             flash("%s - error importing file '%s' - %s"  % (config_acc_dst.name, remote_file.filename, err), 'error')
-#             subprocess.call('mega-logout')
-#             kill_mega_cmd_server()
-#             return redirect('/files/%s' % config.id)
-#         elif output.split(':')[0] != 'Import file complete':
-#             time.sleep(5) # wait
-#         else:
-#             # Log out destination account
-#             subprocess.call('mega-logout')
-#             kill_mega_cmd_server()
-# 
-#             # Set as not updated
-#             acc_state_hash = StateHash.query.filter_by(config_id = config_acc_dst.id, file_type = 'remote').one()
-#             acc_state_hash.state_hash = 'changed'
-#             acc_state_hash.is_update = False
-#             db.session.commit()
-# 
-#             flash("%s - '%s'" % (config_acc_dst.name, output ), 'success')
-#             flash('%s - you should update this account' % config_acc_dst.name, 'warning')
-
-    return render_template('webdav.html', title = 'webdav', served_files = served_files, webdav_form = webdav_form )
+    return render_template('webdav_results.html', title = 'webdav', logged_acc = logged_acc, num_served_files = num_served_files, served_files = served_files, webdav_form = webdav_form )
 
 @app.route('/update/<id>', methods=['GET'])
 @login_required

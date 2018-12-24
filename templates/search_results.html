@@ -37,22 +37,22 @@
     <table style="padding: 8px;" cellspacing="10px">
         {% for file in results %}
             <tr>
-                <td style="word-break: break-all; valign="top"> 
+                <td class="rmenu-host rmenu-id-{{ file.id }}" style="word-break: break-all; valign="top"> 
                     <a target="_blank" href="{{ file.link | safe }}" target="_blank"
                        style="text-decoration: none; color: white;" id="file_id_{{ file.id }}">
                         {{ file.filename | safe }}
                     </a>
                 </td>
-                <!-- TODO just remote file from search with right mneu -->
-	                <!-- Right menu -->
-	                <ul class="rmenu rmenu-id-{{ file.id }} rmenu-custom rmenu-white-shadow">
-	                    <li style="margin-top: 4px;">{{ file.filename | safe}}</li>
-	                    <hr>
-	                    <li data-action="move" data-file="{{ file.id }}">Move</li>
-	                    <li data-action="delete" data-file="{{ file.id }}">Delete</li>
-	                    <li data-action="webdav" data-file="{{ file.id }}">Serve via webdav</li>
-	                </ul>
-	            
+                {% if file.file_type == 'remote' %}
+                    <!-- Right menu -->
+                    <ul class="rmenu rmenu-id-{{ file.id }} rmenu-custom rmenu-white-shadow">
+                        <li style="margin-top: 4px;">{{ file.filename | safe}}</li>
+                        <hr>
+                        <li data-action="move" data-file="{{ file.id }}">Move</li>
+                        <li data-action="delete" data-file="{{ file.id }}">Delete</li>
+                        <li data-action="webdav" data-file="{{ file.id }}">Serve via webdav</li>
+                    </ul>
+                {% endif %}
             </tr>
         {% endfor %}
     </table>
