@@ -2,10 +2,15 @@
 
 {% block files %}
 
+<head>
+    <link rel="stylesheet" href="/static/css/right_menu.css">
+    <script type="text/javascript" src="/static/js/right_menu.js"></script>
+</head>
+
 <!-- Tool bar -->
 <div class="global_bar_box" style="padding: 0px;">
     <div style="padding: 1px 8px;" > 
-	    <input class="custom_button" type='submit' value='Filenames' onClick=" show_files('{{ config.id }}')"/>
+        <input class="custom_button" type='submit' value='Filenames' onClick=" show_files('{{ config.id }}')"/>
     </div>
     <div style="margin-top: 8px; margin-left: auto;">{{ config.name }}</div>
     <div style="padding: 0px 16px; padding-top: 10px; margin-left: auto;">
@@ -15,21 +20,31 @@
 
 <div class="form_box" style="max-width: 100%;">
     <table style="padding: 8px;" cellspacing="10px">
-	    <tr>
-	        <th style="text-align: left; width: 70%;">remote file path ({{ file_stats.remote }})</th>
-	        <th style="text-align: center; width: 20%; padding-left: 10px;">size</th>
-	        <th style="text-align: center;width: 10%; padding-left: 20px;">mod. date</th>
-	    </tr>
+        <tr>
+            <th style="text-align: left; width: 70%;">remote file path ({{ file_stats.remote }})</th>
+            <th style="text-align: center; width: 20%; padding-left: 10px;">size</th>
+            <th style="text-align: center;width: 10%; padding-left: 20px;">mod. date</th>
+        </tr>
 
         {% for remote_file in remote_files %}
             <tr>
                 <td style="word-break: break-all;" valign="top"> 
-                    <a href="{{ remote_file.link | safe}}" style="text-decoration: none; color: white;">
+                   <a class="rmenu-host rmenu-id-{{ remote_file.id }}" target="_blank" href="{{ remote_file.link | safe}}" 
+                      style="text-decoration: none; color: white;" id="remote_file_id_{{ remote_file.id }}">
                         {{ remote_file.path | safe }}
                     </a>
                 </td>
-               <td style="padding-left: 10px; text-align: right;" valign="top">{{ remote_file.size | safe }}</td>
-               <td style="padding-left: 20px; text-align: center;" valign="top">{{ remote_file.mod_date.strftime('%d-%m-%Y') | safe }}</td>
+                <td class="rmenu-host rmenu-id-{{ remote_file.id }}" style="padding-left: 10px; text-align: right;" valign="top">{{ remote_file.size | safe }}</td>
+                <td class="rmenu-host rmenu-id-{{ remote_file.id }}" style="padding-left: 20px; text-align: center;" valign="top">{{ remote_file.mod_date.strftime('%d-%m-%Y') | safe }}</td>
+
+                <!-- Right menu -->
+                <ul class="rmenu rmenu-id-{{ remote_file.id }} rmenu-custom rmenu-white-shadow">
+                    <li style="margin-top: 4px;">{{ remote_file.filename | safe}}</li>
+                    <hr>
+                    <li data-action="move" data-file="{{ remote_file.id }}">Move</li>
+                    <li data-action="delete" data-file="{{ remote_file.id }}">Delete</li>
+                    <li data-action="webdav" data-file="{{ remote_file.id }}">Serve via webdav</li>
+                </ul>
             </tr>
         {% endfor %}
     </table>
@@ -47,17 +62,17 @@
         {% for local_file in local_files %}
             <tr>
                 {% if config.local_links %}
-	                <td style="word-break: break-all;" valign="top"> 
-	                    <a href="file://///{{ local_file.path | safe }}" style="text-decoration: none; color: white;">
-	                        {{ local_file.path | safe }}
-	                    </a>
-	                </td>
+                    <td style="word-break: break-all;" valign="top"> 
+                        <a target="_blank" href="file://///{{ local_file.path | safe }}" style="text-decoration: none; color: white;">
+                            {{ local_file.path | safe }}
+                        </a>
+                    </td>
                 {% else %}
-	                <td style="word-break: break-all;" valign="top"> 
-	                    <a href="{{ local_file.path | safe }}" style="text-decoration: none; color: white;">
-	                        {{ local_file.path | safe }}
-	                    </a>
-	                </td>
+                    <td style="word-break: break-all;" valign="top"> 
+                        <a target="_blank" href="{{ local_file.path | safe }}" style="text-decoration: none; color: white;">
+                            {{ local_file.path | safe }}
+                        </a>
+                    </td>
                 {% endif %}
                <td style="padding-left: 10px; text-align: right;" valign="top">{{ local_file.size | safe }}</td>
                <td style="padding-left: 20px; text-align: center;" valign="top">{{ local_file.mod_date.strftime('%d-%m-%Y') | safe }}</td>

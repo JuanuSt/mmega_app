@@ -8,8 +8,10 @@ venv
 
 # Database
 mmega.db
+mmega.db-journal
 
 # Folders
 tests
 
-
+# Files
+*.pyc

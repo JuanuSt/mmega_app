@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block move %}
+
+<!-- move file form -->
+<form action="" method="post">
+    <!-- form secret key -->
+    {{ move_form.hidden_tag() }}
+
+    <div class="form_box" style="max-width: 500px;">
+       <div style="margin-left: 4px; margin-top: 4px; max-width: 100%;">
+            <p style="max-width: 480px; text-overflow: ellipsis; overflow: auto;">{{ move_form.file_to_move.label }}<br> {{ move_form.file_to_move(readonly=true, size=44) }}</p>
+            <p>{{ move_form.acc_dst.label }} &#160;&#160; {{ move_form.acc_dst }}</p>
+            <p>{{ move_form.remote_dir_dst.label }}<br>{{ move_form.remote_dir_dst(size=20) }}</p>
+        </div>
+        <div class="form_box_sub">
+           <input class="custom_button" type='submit' value='Move' style="float: right;">
+        </div>
+    </div>
+</form>
+
+{% endblock %} 

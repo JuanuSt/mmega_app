@@ -2,6 +2,11 @@
 
 {% block search_results %}
 
+<head>
+    <link rel="stylesheet" href="/static/css/right_menu.css">
+    <script type="text/javascript" src="/static/js/right_menu.js"></script>
+</head>
+
 <div class="global_bar_box" style="padding: 0px;">
     {% if accounts == '0' %}
         <div style="padding: 0px 16px; padding-top: 8px;">
@@ -21,7 +26,7 @@
             </div>
         </div>
     {% endif %}
-    
+
     <a href='/search_results_details/{{ query }}/{{ accounts }}/{{ search_type }}' 
        style="text-decoration: none; padding-left: 8px;">
         <input class="custom_button" type='button' value='Details'>
@@ -32,11 +37,22 @@
     <table style="padding: 8px;" cellspacing="10px">
         {% for file in results %}
             <tr>
-                <td style="word-break: break-all; valign="top"> 
-                    <a href="{{ file.link | safe }}" style="text-decoration: none; color: white;">
+                <td class="rmenu-host rmenu-id-{{ file.id }}" style="word-break: break-all; valign="top"> 
+                    <a target="_blank" href="{{ file.link | safe }}" target="_blank"
+                       style="text-decoration: none; color: white;" id="file_id_{{ file.id }}">
                         {{ file.filename | safe }}
                     </a>
                 </td>
+                {% if file.file_type == 'remote' %}
+                    <!-- Right menu -->
+                    <ul class="rmenu rmenu-id-{{ file.id }} rmenu-custom rmenu-white-shadow">
+                        <li style="margin-top: 4px;">{{ file.filename | safe}}</li>
+                        <hr>
+                        <li data-action="move" data-file="{{ file.id }}">Move</li>
+                        <li data-action="delete" data-file="{{ file.id }}">Delete</li>
+                        <li data-action="webdav" data-file="{{ file.id }}">Serve via webdav</li>
+                    </ul>
+                {% endif %}
             </tr>
         {% endfor %}
     </table>

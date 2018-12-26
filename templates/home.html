@@ -4,7 +4,7 @@
 
 <!-- Glogal Stats bar -->
 <div class="global_stats_box">
-	 
+
     <div>updated {{ total_accounts_updated }}/{{ acc_total }} </div>
     <!--
     <div style="margin-right: auto; margin-left: 2%">synced {{ acc_synced }}/{{ acc_total }} </div> 
@@ -32,20 +32,20 @@
                     <div style="margin-bottom: 2px; cursor: pointer;" id="config_box_{{ account_config.id }}" onClick=" show_config('{{ account_config.id }}')"><strong>Configuration</strong></div>
                     <div class="column">email</div>
                     <div class="column2"> {{ account_config.email }} </div>
-                    
+
                     {% if account_config.local_dir %}
-	                    <div class="column">local dir</div>
-	                    <div class="column2"> {{ account_config.local_dir }} </div>
+                        <div class="column">local dir</div>
+                        <div class="column2"> {{ account_config.local_dir }} </div>
                     {% endif %}
-                    
+
                     <div class="column">remote dir</div>
                     <div class="column2"> {{ account_config.remote_dir }} </div>
-                    
+
                     {% if not account_config.local_dir %}
                         <div class="column"><br></div>
                         <div class="column2"><br></div>
                     {% endif %}
-                    
+
                 </div>
                 <div class="diskfile_box" id="diskfile_box_{{ account_config.id }}">
                     <div class="boxes_skin" id="disk_box_{{ account_config.id }}">
@@ -72,7 +72,7 @@
                     </div>
                     <div class="boxes_skin" id="files_box_{{ account_config.id }}" style='cursor: pointer;' onClick=" show_files('{{ account_config.id }}')">
                         <div style="margin-bottom: 2px"><strong>Files</strong></div>
-                        
+
                         {% if account_file_stats.remote %}
                             <div class="field">
                                <div>remote</div>
@@ -84,30 +84,30 @@
                                <div> </div>
                             </div>
                         {% endif %}
-                        
+
                         {% if account_file_stats.local %}
-	                        <div class="field">
-	                           <div>local</div>
-	                           <div> {{ account_file_stats.local }} </div>
-	                        </div>
-	                    {% else %}
-	                        <div class="field">
-                               <div></div>
-                               <div> </div>
+                            <div class="field">
+                               <div>local</div>
+                               <div> {{ account_file_stats.local }} </div>
                             </div>
-                        {% endif %}
-	                    
-	                    {% if account_file_stats.synced %}
-	                        <div class="field">
-	                           <div>synced</div>
-	                           <div> {{ account_file_stats.synced }} </div>
-	                        </div>
-	                    {% else %}
+                        {% else %}
                             <div class="field">
                                <div></div>
                                <div> </div>
                             </div>
-	                    {% endif %}   
+                        {% endif %}
+
+                        {% if account_file_stats.synced %}
+                            <div class="field">
+                               <div>synced</div>
+                               <div> {{ account_file_stats.synced }} </div>
+                            </div>
+                        {% else %}
+                            <div class="field">
+                               <div></div>
+                               <div> </div>
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="button_box" id="button_box_{{ account_config.id }}">
@@ -116,27 +116,27 @@
                                 style='cursor: pointer;' onClick=" update_full('{{ account_config.id }}')">
                                 Update &#160;
                                 {% if account_state[1] %}
-	                                {% if account_state[0].is_update and account_state[1].is_update %}
-	                                    &#10003;
-	                                {% else %}
-	                                    &#10007;
-	                                {% endif %}
-	                            {% elif account_state[0].is_update %}
-	                            	&#10003;
-	                            {% else %}
-	                            	&#10007;
-	                            {% endif %}
+                                    {% if account_state[0].is_update and account_state[1].is_update %}
+                                        &#10003;
+                                    {% else %}
+                                        &#10007;
+                                    {% endif %}
+                                {% elif account_state[0].is_update %}
+                                    &#10003;
+                                {% else %}
+                                    &#10007;
+                                {% endif %}
                          </button>
                     </div>
                     <div class="button_box_sub">
                         <button class="custom_button" id="button_upload_{{ account_config.id }}"
                                 style='cursor: pointer;' onClick=" upload('{{ account_config.id }}')">
-                        	Upload
+                            Upload
                         </button>
                         {% if account_config.local_dir and os.access(account_config.local_dir, os.R_OK) %}
                             <button class="custom_button" id="button_sync_{{ account_config.id }}"
                                     style='cursor: pointer;' onClick=" sync('{{ account_config.id }}')">
-                            	Sync
+                                Sync
                             </button>
                         {% endif %}
                     </div>

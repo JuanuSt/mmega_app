@@ -32,9 +32,12 @@ class User(Base):
 class Config(Base):
     __table__ = Base.metadata.tables['config']
 
+class Task(Base):
+    __table__ = Base.metadata.tables['task']
+
 class DiskStats(Base):
     __table__ = Base.metadata.tables['disk_stats']
-    
+
 class Files(Base):
     __table__ = Base.metadata.tables['files']
 
@@ -133,7 +136,7 @@ def md5sum(filename, blocksize=65536):
     return hash.hexdigest()
 
 def create_local_hash(local_dir):
-        # Test dir read access
+    # Test dir read access
     if not local_dir:
         return 0
     elif not os.access(local_dir, os.R_OK):
@@ -141,7 +144,7 @@ def create_local_hash(local_dir):
     else:
         # Get list of files (directories are not saved)
         local_files_info = []
-        
+
         for path, subdirs, files in os.walk(local_dir):
             for file_info in files:
                 abs_file_path = os.path.join(path, file_info)
@@ -174,10 +177,10 @@ def create_remote_hash(remote_dir):
 if __name__ == '__main__':
     # Create db object
     db_session = scoped_session(sessionmaker(bind=engine))
-    
+
     # Get accounts by user_id
     accounts = db_session.query(Config).filter_by(user_id = mmega_user_id).all()
-    
+
     for account in accounts:
         # Get account current state
         current_disk_free_bytes = db_session.query(DiskStats.free_bytes).filter_by(config_id = account.id).scalar()
@@ -186,10 +189,10 @@ if __name__ == '__main__':
         except:
             current_local_state_hash = 'init'
         current_remote_state_hash = db_session.query(StateHash.state_hash).filter_by(config_id = account.id, file_type = 'remote').one()
-                
-        # Create mega handler        
+
+        # Create mega handler
         accmega = AccountMega(account.id, account.name, account.email, account.passwd)
-        
+
         # Get disk stats
         df_data_try = accmega.df()
 
@@ -199,30 +202,32 @@ if __name__ == '__main__':
             # Test changes
             if df_data_try[3] == current_disk_free_bytes:
                 print '%s - is udate by disk data' % account.name
-                
+
                 # Get local hash
                 if account.local_dir:
                     new_local_hash = create_local_hash(account.local_dir)
-                    
+
                     if new_local_hash and new_local_hash != 1:
                         if unicode(new_local_hash) != current_local_state_hash.state_hash:
                             #if update_automatically:
                             # else Set account local as not updated
                             account_state_hash = db_session.query(StateHash).filter_by(config_id = account.id, file_type = 'local').one()
+                            account_state_hash.state_hash = 'changed'
                             account_state_hash.is_update = False
                             print "%s - set to non updated by local hash" % account.name
                             db_session.commit()
                         else:
                             print "%s - is update by local hash" % account.name
-                            
+
                             # Get remote files hash
                             new_remote_hash = create_remote_hash(account.remote_dir)
-                            
+
                             if new_remote_hash != 1:
                                 if unicode(new_remote_hash) != current_remote_state_hash.state_hash:
                                         #if update_automatically:
                                         # else Set account remote as not updated
                                         account_state_hash = db_session.query(StateHash).filter_by(config_id = account.id, file_type = 'remote').one()
+                                        account_state_hash.state_hash = 'changed'
                                         account_state_hash.is_update = False
                                         print "%s - set to non updated by remote hash" % account.name
                                         db_session.commit()
@@ -232,15 +237,16 @@ if __name__ == '__main__':
                                 print "%s - error getting remote files" % account.name
                     else:
                         print "%s - no local dir or local dir non readable" % account.name
-                        
+
                         # Get remote files hash
                         new_remote_hash = create_remote_hash(account.remote_dir)
-                        
+
                         if new_remote_hash != 1:
                             if unicode(new_remote_hash) != current_remote_state_hash.state_hash:
                                     #if update_automatically:
                                     # else Set account remote as not updated
                                     account_state_hash = db_session.query(StateHash).filter_by(config_id = account.id, file_type = 'remote').one()
+                                    account_state_hash.state_hash = 'changed'
                                     account_state_hash.is_update = False
                                     print "%s - set to non updated by remote hash" % account.name
                                     db_session.commit()
@@ -249,8 +255,6 @@ if __name__ == '__main__':
                         else:
                             print "%s - error getting remote files" % account.name
             else:
-                #if update_automatically:
-                # else Set account remote as not updated
                 account_state_hash = db_session.query(StateHash).filter_by(config_id = account.id, file_type = 'remote').one()
                 account_state_hash.is_update = False
                 print "%s - set to non updated by disk stats" % account.name
