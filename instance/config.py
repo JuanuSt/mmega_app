@@ -13,7 +13,7 @@ ENV='dev'
 # Sqlalchemy
 SQLALCHEMY_DATABASE_URI = 'sqlite:///mmega.db'
 #SQLALCHEMY_DATABASE_URI = 'postgresql://user:passwd@localhost/mmega'
-SQLALCHEMY_ECHO = True
+SQLALCHEMY_ECHO = False
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 # Redis server

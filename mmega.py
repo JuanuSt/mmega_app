@@ -235,10 +235,6 @@ class MoveForm(FlaskForm):
     acc_dst = SelectField('destination account', coerce=int, validators=[InputRequired()])
     remote_dir_dst = StringField('remote dir', default='/Root', validators=[DataRequired(), Length(0, 4096)], render_kw={"placeholder": "/remote/dir/target"})
     move_button = SubmitField('Move')
-    
-class WebdavForm(FlaskForm):
-    # Show streamed files
-    unset_webdav = SubmitField('Unset')
 
 class SearchForm(FlaskForm):
     string_to_search = StringField('string to search', validators=[DataRequired(), Length(0, 255)])
@@ -1347,25 +1343,18 @@ def move_file(file_id):
 @app.route('/webdav/<file_id>',methods=['GET'])
 @login_required
 def webdav_file(file_id):
-
-    if file_id == 'results':
-        return redirect('/webdav/results')
-
      # Get file info
     remote_file = Files.query.filter_by(id = file_id).one()
     if not remote_file:
         flash('file not found. id %s' % file_id,'error')
-        return redirect('/home')
+        return redirect('/webdav/results')
 
     config = Config.query.filter_by(id = remote_file.config_id).one()
-
-    if remote_file.file_type == 'local':
-        flash('%s - local files %s cannot be streamed' % (config.name, remote_file.filename.encode('utf-8')), 'error')
-        return redirect('/home')
 
     if request.method == 'GET':
         # Test logged account
         command = 'mega-whoami'
+        os.system(command)
         result = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
         output, err = result.communicate()
 
@@ -1373,56 +1362,63 @@ def webdav_file(file_id):
         for line in output_lines:
             words = line.split()
             if 'Initiating' in words:
-                pass
-            elif 'Not' in words:
+                continue
+            elif 'Not' and 'logged' in words:
                 # loggin with megacmd
                 passwd = '\'' + config.passwd + '\''
                 command = 'mega-login %s %s' % (config.email, passwd)
                 os.system(command)
+                command = 'mega-whoami'
+                result = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
+                output, err = result.communicate()
+                logged_email = output.split(':')[1].split()[0]
             else:
                 logged_email = output.split(':')[1].split()[0]
-                # Test if is new file belong to the same account
-                if config.email != unicode(logged_email):
-                    logged_acc = db.session.query(Config).filter_by(email = logged_email).one()
-                    #kill_sessions(config.id)
-                    flash('%s - already serving files for account %s. Remove all served files and try again.' % (config.name, logged_acc.name ), 'error')
-                    return redirect('/webdav/results')
-                else:
-                    # Serve file
-                    remote_file_path = '/' + remote_file.path.lstrip('/Root')  # Adapt remote path to megacmd
-                    command = "mega-webdav '%s' --port=5001 --public" % remote_file_path
-                    os.system(command)
-                    time.sleep(5)
-                    flash("%s - serving via webdav - '%s'" % (config.name, remote_file.filename),'success')
-                    return redirect('/webdav/results')
+
+            # Test if is new file belong to the same account
+            if config.email != unicode(logged_email):
+                logged_acc = db.session.query(Config).filter_by(email = logged_email).one()
+                flash('%s - already serving files for account %s. Remove all served files and try again.' % (config.name, logged_acc.name ), 'error')
+                return redirect('/webdav/results')
+            else:
+                # Serve file
+                remote_file_path = '/' + remote_file.path.lstrip('/Root')  # Adapt remote path to megacmd
+                command = "mega-webdav '%s' --port=5001 --public" % remote_file_path
+                os.system(command)
+                time.sleep(2)
+                flash("%s - serving via webdav - '%s'" % (config.name, remote_file.filename),'success')
+                return redirect('/webdav/results')
+
     return redirect('/webdav/results')
 
-@app.route('/webdav/results',methods=['GET', 'POST'])
+@app.route('/webdav/results',methods=['GET'])
 @login_required
 def webdav_results():
-    webdav_form = WebdavForm()
     user = User.query.filter_by(id = current_user.id).one()
     accs = Config.query.filter_by(user_id = current_user.id).all()
     logged_acc = False
+    served_files = []
     num_served_files = 0
     webdav_output = False
 
-    if request.method == 'GET':
-        # Test logged account
-        command = 'mega-whoami'
-        result = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
-        output, err = result.communicate()
+    # Test logged account
+    command = 'mega-whoami'
+    os.system(command)
+    result = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
+    output, err = result.communicate()
 
-        accs_list = []
-        for acc in accs:
-            accs_list.append(acc.email)
+    accs_list = []
+    for acc in accs:
+        accs_list.append(acc.email)
 
+    if output:
         output_lines = output.splitlines()
         for line in output_lines:
             words = line.split()
             if 'Initiating' in words:
-                pass
-            elif 'Not' in words:
+                print "Initiating server..."
+                continue
+            elif 'Not' and 'logged' in words:
                 served_files = False
                 flash('%s - No logged in any account' % user.user_name, 'warning')
             else:
@@ -1433,32 +1429,59 @@ def webdav_results():
                 sys.setdefaultencoding('utf8')
                 result = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
                 webdav_output, err = result.communicate()
+    else:
+        flash('Error getting logged account', 'error')
 
-        if webdav_output:
-            if webdav_output == 'Webdav server might not running. Add a new location to serve.\n':
-                pass
-            else:
-                local_ip = get_ip()
-                webdav_lines = webdav_output.splitlines()[1:]
+    if webdav_output:
+        if webdav_output == 'Webdav server might not running. Add a new location to serve.\n':
+            pass
+        else:
+            local_ip = get_ip()
+            webdav_lines = webdav_output.splitlines()[1:]
 
-                served_files = []
-                num_served_files = 0
-                for line in webdav_lines:
-                    num_served_files += 1
-                    filepath_served = line.split(':')[0]
-                    filename = os.path.basename(filepath_served)
-                    #id = db.sesion.get()
-                    webdav_link = line.split()[-1]
-                    raw_link = urlparse(webdav_link)
-                    webdav_local_link = raw_link.scheme + '://' + local_ip + ':' + str(raw_link.port) + raw_link.path
-                    served_files.append((filename, webdav_local_link))
+            for line in webdav_lines:
+                num_served_files += 1
+                filepath_served = line.split(':')[0]
+                filename = os.path.basename(filepath_served)
 
-    if request.method == 'POST' and webdav_form.validate_on_submit():
+                # Get file info
+                adapted_remote_path =  os.path.join('/Root' + filepath_served)
+                remote_file = db.session.query(Files).filter_by(path = adapted_remote_path, file_type = 'remote').one()
 
-        # Test if is the same account
-        print "Testing if same account"
+                # Change IP to local IP
+                webdav_link = line.split()[-1]
+                raw_link = urlparse(webdav_link)
+                webdav_local_link = raw_link.scheme + '://' + local_ip + ':' + str(raw_link.port) + raw_link.path
 
-    return render_template('webdav_results.html', title = 'webdav', logged_acc = logged_acc, num_served_files = num_served_files, served_files = served_files, webdav_form = webdav_form )
+                # Save data into the list
+                served_files.append((remote_file.id, filename, webdav_local_link))
+
+        if num_served_files == 0:
+            kill_sessions(logged_acc.id)  # logout too
+
+    return render_template('webdav_results.html', title = 'webdav', logged_acc = logged_acc, num_served_files = num_served_files, served_files = served_files)
+
+@app.route('/webdav/unset_all/<config_id>',methods=['GET'])
+@login_required
+def webdav_unset_all(config_id):
+    acc =  Config.query.filter_by(id = config_id).one()
+    command = 'mega-webdav -d --all'
+    os.system(command)
+    kill_sessions(config_id)  # logout too
+    kill_mega_cmd_server()
+    flash('%s - All files have been unset' % acc.name,'success')
+    return redirect('/home')
+
+@app.route('/webdav/unset/<file_id>',methods=['GET'])
+@login_required
+def webdav_unset(file_id):
+    remote_file = db.session.query(Files).filter_by(id = file_id).one()
+    acc = db.session.query(Config).filter_by(id = remote_file.config_id).one()
+    remote_file_path = '/' + remote_file.path.lstrip('/Root')  # Adapt remote path to megacmd
+    command = "mega-webdav -d '%s'" % remote_file_path
+    os.system(command)
+    flash('%s - file %s has been unset' % (acc.name, remote_file.filename),'success')
+    return redirect('/webdav/results')
 
 @app.route('/update/<id>', methods=['GET'])
 @login_required
@@ -1507,12 +1530,12 @@ def upload(id):
         if accmega.ls(upload_file_form.remote_dir_dst.data):
             accmega.put(os.path.join(tmp_dir, filename), os.path.join(upload_file_form.remote_dir_dst.data, filename))
             _set_task_progress(100)
-            
+
             # Set State Hash to non updated
             remote_state_hash.state_hash = 'changed'
             remote_state_hash.is_update = False
             db.session.commit()
-            
+
             flash('%s - file uploaded (%s)' % (config.name, filename), 'success') 
             flash('%s - you should update this account' % config.name, 'warning')
         else:
@@ -1534,7 +1557,7 @@ def sync(id):
         return redirect('/home')
     elif config.local_dir:
         # logout before (in case of crash)
-        subprocess.call('mega-logout')
+        os.system('mega-logout')
 
         passwd = '\'' + config.passwd + '\''
         os.system('mega-login %s %s' % (config.email, passwd))
@@ -1649,13 +1672,13 @@ def automation():
                 cron.remove( item )
                 cron.write()
                 print "Deleted crontab %s for user %s" %(item, current_user.id)
-            
+
             # Create job
             path = os.getcwd()
             #python_path = os.path.join(path,'venv/bin/python') # For virtualenv
             python_path = 'python'
             job = cron.new(command='cd %s && %s %s/cron_update.py %s' % (path, python_path, path, current_user.id))
-                
+
             # Get form data
             cron_option = form.cron_options.data
 

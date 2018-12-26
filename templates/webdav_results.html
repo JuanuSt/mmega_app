@@ -6,7 +6,7 @@
 <div class="global_bar_box" style="padding: 0px;">
     {% if logged_acc %}
         <div style="padding: 1px 8px;" > 
-            <input class="custom_button" type='submit' value='Unset all' onClick=" /webdav/operations/('{{ logged_acc.id }}')"/>
+            <input class="custom_button" type='submit' value='Unset all' onClick=" unset_all('{{ logged_acc.id }}')"/>
         </div>
         <div style="margin-top: 8px; margin-left: auto;">{{ logged_acc.name }}</div>
         <div style="padding: 0px 16px; padding-top: 10px; margin-left: auto; margin-right: 4px;">
@@ -24,13 +24,15 @@
     {% for served_file in served_files %}
     <div class="button_box" style="min-width: 170px; max-width: 500px;" >
         <div style="margin-top: 10px; margin-left: 8px; max-width: 54%; text-overflow: ellipsis; overflow: auto;">
-            <a target="_blank" href="{{ served_file[1] | safe}}" 
-               style="text-decoration: none; color: white;">{{ served_file[0] | safe }}</a>
+            <a target="_blank" href="{{ served_file[2] | safe }}" style="text-decoration: none; color: white;">
+                {{ served_file[1] | safe }}
+            </a>
+            <input style="display: none;" value="{{ served_file[2] | safe }}" id="link_{{ served_file[0] }}">
         </div>
         <div class="button_box_sub">
-		    <input class="custom_button" type='submit' value='Copy link'>
-		    <input class="custom_button" type='submit' value='Unset'>
-		</div>
+            <input class="custom_button" type="submit" value='Copy link' onClick=" copy_link('{{ served_file[0] }}')">
+            <input class="custom_button" type="submit" value='Unset' onClick=" unset('{{ served_file[0] }}')">
+        </div>
     </div>
     {% endfor %}
 {% endif %}
