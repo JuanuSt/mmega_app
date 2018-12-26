@@ -36,6 +36,7 @@
 # Modify and copy mmega.service
   python_bin="$(which python)"
   mmega_path="$(echo $PWD)"
+  sed -i s+EnvironmentFile=.*+EnvironmentFile="$mmega_path/service_env"+ mmega.service
   sed -i s+WorkingDirectory=.*+WorkingDirectory="$mmega_path"+ mmega.service
   sed -i s+User=.*+User="$USER"+ mmega.service
   sed -i s+ExecStart=.*+ExecStart="$python_bin $mmega_path/mmega.py"+ mmega.service
