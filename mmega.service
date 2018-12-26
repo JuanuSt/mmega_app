@@ -3,6 +3,7 @@ Description=mmega systemd service.
 
 [Service]
 Type=simple
+EnvironmentFile=
 WorkingDirectory=
 User=
 ExecStart=
