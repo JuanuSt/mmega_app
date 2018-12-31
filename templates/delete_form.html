@@ -10,10 +10,9 @@
     <div class="form_box" style="max-width: 500px;">
         <div>
             <p>{{ delete_account_form.name.label }}<br>{{ delete_account_form.name(size=20, readonly=true)  }}</p>
-            <p>{{ delete_account_form.local_dir.label }}<br>{{  delete_account_form.local_dir(size=20, readonly=true) }}</p>
-            <p>{{ delete_account_form.remote_dir.label }}<br>{{  delete_account_form.remote_dir(size=20, readonly=true) }}</p>
-            
-	    </div>
+            <p>{{ delete_account_form.local_dir.label }}<br>{{ delete_account_form.local_dir(size=20, readonly=true) }}</p>
+            <p>{{ delete_account_form.remote_dir.label }}<br>{{ delete_account_form.remote_dir(size=20, readonly=true) }}</p>
+        </div>
         <div class="form_box_sub">
             <p>{{ delete_account_form.email.label }}<br>{{  delete_account_form.email(size=20, readonly=true) }}</p>
             <p>{{ delete_account_form.passwd.label }}<br>{{  delete_account_form.passwd(size=20) }}</p>

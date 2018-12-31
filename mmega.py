@@ -230,11 +230,12 @@ class UploadFileForm(FlaskForm):
     file = FileField(validators=[DataRequired()])
     remote_dir_dst = StringField('remote dir', validators=[DataRequired(), Length(0, 4096)], render_kw={"placeholder": "/remote/dir/target"})
 
-class MoveForm(FlaskForm):
-    file_to_move = StringField('file to move', validators=[DataRequired(), Length(0, 255)])
+class CopyForm(FlaskForm):
+    file_to_move = StringField('file to copy or move', validators=[DataRequired(), Length(0, 255)])
+    move_check = BooleanField('move')
     acc_dst = SelectField('destination account', coerce=int, validators=[InputRequired()])
     remote_dir_dst = StringField('remote dir', default='/Root', validators=[DataRequired(), Length(0, 4096)], render_kw={"placeholder": "/remote/dir/target"})
-    move_button = SubmitField('Move')
+    move_button = SubmitField('Copy / Move')
 
 class SearchForm(FlaskForm):
     string_to_search = StringField('string to search', validators=[DataRequired(), Length(0, 255)])
@@ -499,7 +500,7 @@ def get_remote_files(id):
         # Do not delete files
         db.session.rollback()
 
-        flash('Error getting remote files for account %s' % (name), 'error')
+        flash('%s - error getting remote files' % name, 'error')
         return 1
     else:
         # Get state hash
@@ -1071,8 +1072,11 @@ def add_account():
 
                 # Insert data in db
                 for row in dataset:
-                    new_account = Config(user_id = current_user.id, name = row[0], email = row[1], passwd = row[2], local_dir = row[3], remote_dir = row[4])
-                    db.session.add(new_account)
+                    try:
+                        new_account = Config(user_id = current_user.id, name = row[0], email = row[1], passwd = row[2], local_dir = row[3], remote_dir = row[4])
+                        db.session.add(new_account)
+                    except:
+                        pass
 
                 # Declare result_list
                 result_list = []
@@ -1109,7 +1113,7 @@ def add_account():
 
                         # update stats
                         update_file_stats(acc.id)
-                        
+
                         flash('%s - has been correctly added' % (acc.name), 'success')
 
                 return render_template('uploaded_config_file.html', title = 'uploaded config file', result_list = result_list)
@@ -1235,24 +1239,24 @@ def delete_remote_file(file_id):
     flash('%s - you should update this account' % acc.name, 'warning')
     return redirect('/files/%s' % acc.id)
 
-@app.route('/move/<file_id>',methods=['GET', 'POST'])
+@app.route('/copy/<file_id>',methods=['GET', 'POST'])
 @login_required
-def move_file(file_id):
-    move_form = MoveForm()
+def copy_file(file_id):
+    copy_form = CopyForm()
     remote_file = Files.query.filter_by(id = file_id).one() # Get file info
     config = Config.query.filter_by(id = remote_file.config_id).one()
 
     user_accounts = Config.query.filter(Config.user_id == current_user.id, Config.id != config.id).all()
     user_accounts_list = [(i.id, i.name) for i in user_accounts]
-    move_form.acc_dst.choices = user_accounts_list
+    copy_form.acc_dst.choices = user_accounts_list
 
     if request.method == 'GET':
-        move_form.file_to_move.data = remote_file.path
+        copy_form.file_to_move.data = remote_file.path
 
-    if request.method == 'POST' and move_form.validate_on_submit():
+    if request.method == 'POST' and copy_form.validate_on_submit():
         # Get dst params
-        config_acc_dst = Config.query.filter_by(id = move_form.acc_dst.data).one()
-        dst_dir = move_form.remote_dir_dst.data
+        config_acc_dst = Config.query.filter_by(id = copy_form.acc_dst.data).one()
+        dst_dir = copy_form.remote_dir_dst.data
 
         # Log out/in using megacmd
         os.system('mega-logout')
@@ -1280,7 +1284,7 @@ def move_file(file_id):
             kill_mega_cmd_server()
             return redirect('/files/%s' % config.id)
 
-        command = "mega-import '%s' '%s'" % (remote_file.link,  dst_dir)
+        command = "mega-import '%s' '%s'" % (remote_file.link, dst_dir)
         result = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
         output, err = result.communicate()
 
@@ -1306,38 +1310,41 @@ def move_file(file_id):
             flash("%s - '%s'" % (config_acc_dst.name, output ), 'success')
             flash('%s - you should update this account' % config_acc_dst.name, 'warning')
 
-            # Delete file in the source account (or just move to trash?)
-            # Login in source account
-            passwd = '\'' + config.passwd + '\''
-            os.system('mega-login %s %s' % (config.email, passwd))
+            # Delete file in the source account if move option is checked
+            move_checked = copy_form.move_check.data
 
-            # Delete
-            command = "mega-rm '%s'" % remote_file.path.lstrip('/Root')
-            result = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
-            output, err = result.communicate()
+            if move_checked:
+                # Login in source account
+                passwd = '\'' + config.passwd + '\''
+                os.system('mega-login %s %s' % (config.email, passwd))
 
-            if err:
-                flash("%s - error deleting file '%s' - %s"  % (config.name, remote_file.filename, err), 'error')
-                kill_sessions(config.id)
-                kill_mega_cmd_server()
-                return redirect('/files/%s' % config.id)
-            else:
-                # Log out sourceaccount
-                kill_sessions(config.id)
-                os.system('mega-logout')
-                kill_mega_cmd_server()
+                # Delete
+                command = "mega-rm '%s'" % remote_file.path.lstrip('/Root')
+                result = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
+                output, err = result.communicate()
 
-                # Set as not updated
-                acc_state_hash = StateHash.query.filter_by(config_id = config.id, file_type = 'remote').one()
-                acc_state_hash.state_hash = 'changed'
-                acc_state_hash.is_update = False
-                db.session.commit()
+                if err:
+                    flash("%s - error deleting file '%s' - %s"  % (config.name, remote_file.filename, err), 'error')
+                    kill_sessions(config.id)
+                    kill_mega_cmd_server()
+                    return redirect('/files/%s' % config.id)
+                else:
+                    # Log out sourceaccount
+                    kill_sessions(config.id)
+                    os.system('mega-logout')
+                    kill_mega_cmd_server()
 
-                flash('%s - file %s deleted' % (config.name, remote_file.filename ), 'success')
-                flash('%s - you should update this account' % config.name, 'warning')
-                return redirect('/files/%s' % config.id)
+                    # Set as not updated
+                    acc_state_hash = StateHash.query.filter_by(config_id = config.id, file_type = 'remote').one()
+                    acc_state_hash.state_hash = 'changed'
+                    acc_state_hash.is_update = False
+                    db.session.commit()
 
-    return render_template('move.html', title = 'move', move_form = move_form )
+                    flash('%s - file %s deleted' % (config.name, remote_file.filename ), 'success')
+                    flash('%s - you should update this account' % config.name, 'warning')
+                    return redirect('/files/%s' % config.id)
+
+    return render_template('copy.html', title = 'move', copy_form = copy_form )
 
 @app.route('/webdav/<file_id>',methods=['GET'])
 @login_required

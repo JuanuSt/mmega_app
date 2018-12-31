@@ -35,8 +35,8 @@ onDOMReady(function(){
 function handleMenuAction(evt, file_id) {
     if (evt == 'delete')
         window.location.href=('/delete_remote_file/' + file_id);
-    if (evt == 'move')
-        window.location.href=('/move/' + file_id);
+    if (evt == 'copy')
+        window.location.href=('/copy/' + file_id);
     if (evt == 'webdav')
         window.location.href=('/webdav/' + file_id);
 }
