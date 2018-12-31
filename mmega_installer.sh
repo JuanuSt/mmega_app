@@ -58,7 +58,10 @@
   fi
   sudo cp mmega_nginx.conf /etc/nginx/sites-available/mmega
   sudo ln -s /etc/nginx/sites-available/mmega /etc/nginx/sites-enabled/mmega
+
+# Start services
   sudo service nginx restart
+  sudo service mmega start
 
 # Delete files
   rm -r images
