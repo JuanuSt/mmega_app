@@ -1,12 +1,11 @@
 [Unit]
-Description=mmega systemd service.
+Description=mmega uWSGI systemd service.
 
 [Service]
-Type=simple
-EnvironmentFile=
-WorkingDirectory=
-User=
-ExecStart=
+User=kass
+WorkingDirectory=/home/kass/workspaces/mmega_app/mmega_app
+ExecStart=/home/kass/workspaces/mmega_app/mmega_app/venv/bin/uwsgi --ini /home/kass/workspaces/mmega_app/mmega_app/uwsgi.ini
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target

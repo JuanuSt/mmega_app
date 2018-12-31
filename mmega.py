@@ -878,10 +878,10 @@ def login():
             login_user(user, remember=login_form.remember_me.data)
 
             # Init mega-cmd-server
-            accs = Config.query.all()
-            if accs:
-                for acc in accs:
-                    kill_sessions(acc.id)
+            #accs = Config.query.all()
+            #if accs:
+            #    for acc in accs:
+            #        kill_sessions(acc.id)
 
             flash('Logged in successfully as {}'.format(login_form.username.data), 'success')
 
@@ -1339,7 +1339,6 @@ def move_file(file_id):
 
     return render_template('move.html', title = 'move', move_form = move_form )
 
-
 @app.route('/webdav/<file_id>',methods=['GET'])
 @login_required
 def webdav_file(file_id):
@@ -1719,9 +1718,4 @@ def automation():
             return redirect((url_for('automation')))
 
     return render_template('automation_form.html', form=form, inst_job = inst_job)
-
-# Start
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, threaded=True)
-    app.app_context().push()
 
