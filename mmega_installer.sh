@@ -15,6 +15,7 @@
 
 # Install system packages
   sudo -S apt update && sudo apt -y upgrade
+  sudo apt -y install ssh
   sudo apt -y install git
   sudo apt -y install wget
   sudo apt -y install nginx
@@ -26,6 +27,7 @@
   rm megacmd-xUbuntu_16.08_amd64.deb
 
 # Download app
+  mkdir ~/.ssh/
   ssh-keyscan -H bitbucket.org >> ~/.ssh/known_hosts
   git clone https://juanust@bitbucket.org/juanust/mmega_app.git -b master
 
@@ -38,7 +40,7 @@
   sed -i s+User=.*+User="$USER"+ mmega.service
   sed -i s+WorkingDirectory=.*+WorkingDirectory="$PWD"+ mmega.service
   sed -i s+ExecStart=.*+ExecStart="$uwsgi_bin --ini $PWD/uwsgi.ini"+ mmega.service
-  sudo cp mmega.service /etc/systemd/system/mmega.service
+  sudo ln -s "$PWD"/mmega.service /etc/systemd/system/mmega.service
 
 # Create uwsgi.ini
   sudo mkdir -p /var/log/uwsgi
@@ -62,7 +64,6 @@
   rm -r images
   rm install_dependencies.sh
   rm mmega_installer.sh
-  rm mmega.service
   rm mmega_nginx.conf
   rm requeriments.txt
   rm README.md
@@ -70,8 +71,8 @@
 
 echo
 echo "Success: mmega_app has been installed"
-echo " - Now you can execute 'python mmega.py' to test the installation. Observe that you're using a dev environment config"
-echo " - To start mmega as service execute 'sudo systemctl start mmega'. You must adapt the environment variable and change to prod config"
+echo " - Now you can execute 'python run.py' to test the installation. Observe that you're using a dev environment config"
+echo " - To start mmega as service execute 'sudo systemctl start mmega'. You must adapt the environment variables and change to prod config"
 echo
 
 exit

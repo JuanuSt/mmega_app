@@ -2,9 +2,9 @@
 Description=mmega uWSGI systemd service.
 
 [Service]
-User=kass
-WorkingDirectory=/home/kass/workspaces/mmega_app/mmega_app
-ExecStart=/home/kass/workspaces/mmega_app/mmega_app/venv/bin/uwsgi --ini /home/kass/workspaces/mmega_app/mmega_app/uwsgi.ini
+User=
+WorkingDirectory=
+ExecStart=
 Restart=on-failure
 
 [Install]
