@@ -36,7 +36,7 @@
                 <ul class="rmenu rmenu-id-{{ remote_file.id }} rmenu-custom rmenu-white-shadow">
                     <li style="margin-top: 4px;">{{ remote_file.filename | safe}}</li>
                     <hr>
-                    <li data-action="move" data-file="{{ remote_file.id }}">Move</li>
+                    <li data-action="copy" data-file="{{ remote_file.id }}">Copy / Move</li>
                     <li data-action="delete" data-file="{{ remote_file.id }}">Delete</li>
                     <li data-action="webdav" data-file="{{ remote_file.id }}">Serve via webdav</li>
                 </ul>
