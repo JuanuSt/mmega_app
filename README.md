@@ -20,7 +20,7 @@ The application has a responsive design, so it can be displayed correctly on mob
 ### Install
 If you want to install this app in a virtual environment use option 3.
 
-Option 1 - You can download or copy the script `full_install_mmega.sh` (bash). It will install all the system packages, download this repository, install the python packages, copy mmega.service and delete unnecessary files. You will be asked for your sudo password.
+Option 1 - You can copy the script `mmega_installer.sh` (bash). It will install all the system packages, download this repository, install the python packages, create mmega.service, nginx and uwsgi configuration files for prod environment and and delete unnecessary files. You will be asked for your sudo password.
 
 Option 2 - Clone this repository: ` git clone https://juanust@bitbucket.org/juanust/mmega_app.git -b master`. Then run the `install_dependencies.sh` script from the mmega_app directory: `./install_dependencies.sh` (you will be asked for your sudo password).
 
@@ -29,11 +29,13 @@ Option 3 - Follow these steps after cloning the repository:
 * Install megatools `sudo apt install megatools`.
 * Download MEGAcmd `wget -q https://mega.nz/linux/MEGAsync/xUbuntu_18.04/amd64/megacmd-xUbuntu_18.04_amd64.deb` (or another distro)
 * Install MEGAcmd and dependecies `sudo apt -y install -f ./megacmd-xUbuntu_18.04_amd64.deb`
+* Install nginx `sudo apt install nginx`
+* Install redis-server `sudo apt install redis-server`
 * Install python-pip `sudo apt install python-pip`.
 * Install virtualenv `sudo apt install virtualenv` (optional). Change to the mmega_app directory and create a virtual environment. Active the virtualenv before running the next step.
 * Install python requeriments `pip install -r requeriments.txt`. Run this command from the mmega_app directory.
 
-Before running the application installed with any of the three options, choose a configuration (lines 25 and 26 in mmega.py):
+Before running the application installed with any of the three options, choose a configuration (lines 25 and 26 in `mmega.py`):
 
 * production (config.py file). **Recommended**.
 * dev        (config.py file inside the instance folder, **set by default**)
