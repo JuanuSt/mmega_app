@@ -24,7 +24,7 @@
   sudo apt -y install python-pip
   wget -q https://mega.nz/linux/MEGAsync/xUbuntu_18.04/amd64/megacmd-xUbuntu_18.04_amd64.deb
   sudo apt -y install -f ./megacmd-xUbuntu_18.04_amd64.deb
-  rm megacmd-xUbuntu_16.08_amd64.deb
+  rm megacmd-xUbuntu_18.04_amd64.deb
 
 # Download app
   mkdir ~/.ssh/
